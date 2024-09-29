@@ -191,8 +191,8 @@ process_selected_repos() {
 
     for selection in $selected_repos; do
         repo_info=$(echo "$all_repos" | sed -n "${selection}p")
-        IFS='|' read -r repo visibility archived <<< "$repo_info"
-        if validate_repo_name "$repo"; then
+        if [ -n "$repo_info" ]; then
+            IFS='|' read -r repo visibility archived <<< "$repo_info"
             if [ "$archived" = "true" ]; then
                 dialog --msgbox "Repository $repo is archived and cannot be modified." 8 60
             elif toggle_repo_visibility "$repo"; then
@@ -200,8 +200,6 @@ process_selected_repos() {
             else
                 dialog --msgbox "Failed to toggle visibility for $repo. Check the log file for details." 10 70
             fi
-        else
-            dialog --msgbox "Invalid repository name: $repo. Skipping." 8 60
         fi
     done
 }
