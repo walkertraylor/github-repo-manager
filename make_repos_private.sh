@@ -81,7 +81,7 @@ show_repo_selection_menu() {
 
     dialog --clear --title "Select Repositories to Toggle Visibility" \
            --checklist "Choose repositories:" 20 70 15 \
-           "${menu_items[@]}" 2>&1 >/dev/tty || true
+           "${menu_items[@]}" 2>&1 >/dev/tty || echo ""
 }
 
 # Function to toggle repository visibility
@@ -125,6 +125,9 @@ save_repo_status() {
         return
     fi
 
+    # Ensure the directory exists
+    mkdir -p "$(dirname "$output_file")"
+
     echo -e "${YELLOW}Saving repository status to $output_file${NC}"
     if ! gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner),\(.visibility)"' > "$output_file"; then
         dialog --msgbox "Failed to save repository status. Please check your GitHub authentication and try again." 8 60
@@ -146,6 +149,12 @@ load_and_apply_repo_status() {
 
     if [ ! -f "$input_file" ]; then
         dialog --msgbox "File not found: $input_file" 8 40
+        return
+    fi
+
+    # Check if the file is readable
+    if [ ! -r "$input_file" ]; then
+        dialog --msgbox "Cannot read file: $input_file. Please check permissions." 8 60
         return
     fi
 
