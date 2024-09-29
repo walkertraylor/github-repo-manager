@@ -157,12 +157,15 @@ toggle_repo_archive_status() {
     log "New status will be: $new_status"
 
     # Confirmation dialog
+    log "Preparing to show confirmation dialog"
+    sleep 1  # Add a small delay before showing the dialog
     log "Showing confirmation dialog"
-    dialog --title "Confirm Archive Status Change" --yesno "Are you sure you want to change $repo to $new_status?" 8 60
+    dialog --stdout --title "Confirm Archive Status Change" --yesno "Are you sure you want to change $repo to $new_status?" 8 60
     local dialog_result=$?
     log "Dialog result: $dialog_result"
     if [ $dialog_result -ne 0 ]; then
         log "User cancelled archive status change for $repo"
+        dialog --title "Cancelled" --msgbox "Archive status change cancelled for $repo" 8 60
         return 2
     fi
 
