@@ -377,7 +377,7 @@ show_main_menu() {
     local username=$(echo "$user_info" | jq -r '.login')
     local name=$(echo "$user_info" | jq -r '.name')
     local public_repos=$(echo "$user_info" | jq -r '.public_repos')
-    local private_repos=$(echo "$user_info" | jq -r '.total_private_repos')
+    local private_repos=$(echo "$user_info" | jq -r '.total_private_repos // "N/A"')
     
     log "Parsed values: username=$username, name=$name, public_repos=$public_repos, private_repos=$private_repos"
     
