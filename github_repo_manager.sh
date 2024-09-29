@@ -150,6 +150,13 @@ toggle_repo_archive_status() {
         new_status="archived"
     fi
 
+    # Confirmation dialog
+    dialog --title "Confirm Archive Status Change" --yesno "Are you sure you want to change $repo to $new_status?" 8 60
+    if [ $? -ne 0 ]; then
+        log "User cancelled archive status change for $repo"
+        return 2
+    fi
+
     # Attempt to change archive status using GitHub CLI
     log "Changing archive status of $repo from $current_status to $new_status"
     output=$(gh repo edit "$repo" --"$new_status" 2>&1)
@@ -165,6 +172,8 @@ toggle_repo_archive_status() {
             dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
         elif echo "$output" | grep -q "Could not resolve to a Repository"; then
             dialog --title "Error" --msgbox "Repository $repo not found or you don't have permission to modify it." 8 60
+        elif echo "$output" | grep -q "Resource not accessible by integration"; then
+            dialog --title "Error" --msgbox "You don't have permission to archive/unarchive this repository." 8 60
         else
             dialog --title "Error" --msgbox "Failed to change $repo archive status.\nError: $output" 10 60
         fi
@@ -271,6 +280,7 @@ process_selected_repos_archive() {
     local repo
     local visibility
     local archived
+    local refresh_needed=false
 
     if [ "$selected_repos" = "BACK" ]; then
         return
@@ -285,13 +295,27 @@ process_selected_repos_archive() {
         if [[ $selection =~ ^[0-9]+$ ]] && [ "$selection" -le "${#repo_array[@]}" ]; then
             repo_info="${repo_array[$((selection-1))]}"
             IFS='|' read -r repo visibility archived <<< "$repo_info"
-            if toggle_repo_archive_status "$repo"; then
-                dialog --msgbox "Successfully toggled archive status for $repo" 8 60
-            else
-                dialog --msgbox "Failed to toggle archive status for $repo. Check the log file for details." 10 70
-            fi
+            toggle_result=$(toggle_repo_archive_status "$repo")
+            case $toggle_result in
+                0)
+                    dialog --msgbox "Successfully toggled archive status for $repo" 8 60
+                    refresh_needed=true
+                    ;;
+                1)
+                    dialog --msgbox "Failed to toggle archive status for $repo. Check the log file for details." 10 70
+                    ;;
+                2)
+                    dialog --msgbox "Archive status change cancelled for $repo" 8 60
+                    ;;
+            esac
         fi
     done
+
+    if [ "$refresh_needed" = true ]; then
+        CACHED_REPOS=""
+        get_all_repositories >/dev/null
+        dialog --msgbox "Repository cache has been refreshed." 8 40
+    fi
 }
 
 # Function to list all repositories
