@@ -1,5 +1,11 @@
 #!/bin/bash
 
+# Set up logging
+LOG_FILE="repo_visibility_changer.log"
+exec > >(tee -a "$LOG_FILE") 2>&1
+
+echo "Script started at $(date)"
+
 # Dialog color settings
 export DIALOGRC="/tmp/dialogrc"
 cat > "$DIALOGRC" << EOF
@@ -76,10 +82,18 @@ change_repo_visibility() {
     local repo="$1"
     local visibility="$2"
     local output
+
+    echo "$(date): Attempting to change visibility of $repo to $visibility" >> "$LOG_FILE"
+
     output=$(timeout 60s gh repo edit "$repo" --visibility "$visibility" 2>&1)
     local exit_code=$?
+
+    echo "$(date): gh command exit code: $exit_code" >> "$LOG_FILE"
+    echo "$(date): gh command output: $output" >> "$LOG_FILE"
+
     if [ $exit_code -eq 0 ]; then
         echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}$visibility${NC}"
+        echo "$(date): Successfully changed $repo to $visibility" >> "$LOG_FILE"
         # Refresh the repository list
         all_repos=$(get_all_repositories)
         echo "$visibility"
@@ -87,23 +101,30 @@ change_repo_visibility() {
     elif [ $exit_code -eq 124 ]; then
         echo -e "${YELLOW}⚠️ Command timed out while changing ${CYAN}$repo${YELLOW} to ${MAGENTA}$visibility${NC}"
         echo -e "${YELLOW}Checking current visibility...${NC}"
+        echo "$(date): Command timed out. Checking current visibility." >> "$LOG_FILE"
         local current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility')
+        echo "$(date): Current visibility: $current_visibility" >> "$LOG_FILE"
         if [ "$current_visibility" = "$visibility" ]; then
             echo -e "${GREEN}✅ Repository ${CYAN}$repo${GREEN} is now ${MAGENTA}$visibility${NC}"
+            echo "$(date): Repository $repo is now $visibility despite timeout" >> "$LOG_FILE"
             return 0
         else
             echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}$visibility${NC}"
+            echo "$(date): Failed to change $repo to $visibility after timeout" >> "$LOG_FILE"
             return 3
         fi
     else
         if echo "$output" | grep -q "API rate limit exceeded"; then
             echo -e "${RED}❌ GitHub API rate limit exceeded. Please try again later.${NC}"
+            echo "$(date): GitHub API rate limit exceeded" >> "$LOG_FILE"
             return 2
         elif echo "$output" | grep -q "Could not resolve to a Repository"; then
             echo -e "${RED}❌ Repository ${CYAN}$repo${RED} not found or you don't have permission to modify it.${NC}"
+            echo "$(date): Repository $repo not found or permission denied" >> "$LOG_FILE"
             return 4
         else
             echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}$visibility${RED}: $output${NC}"
+            echo "$(date): Failed to change $repo to $visibility: $output" >> "$LOG_FILE"
             return 1
         fi
     fi
