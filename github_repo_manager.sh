@@ -124,6 +124,54 @@ toggle_repo_visibility() {
     fi
 }
 
+# Function to toggle repo archive status
+toggle_repo_archive_status() {
+    local repo="$1"
+    local current_status
+    local new_status
+    local output
+
+    log "Checking current archive status of $repo"
+
+    # Get current archive status using GitHub CLI
+    current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>&1)
+    if [ $? -ne 0 ]; then
+        log "Failed to get archive status for $repo. Error: $current_status"
+        dialog --title "Error" --msgbox "Failed to get archive status for $repo.\nError: $current_status" 10 60
+        return 1
+    fi
+
+    log "Current archive status of $repo: $current_status"
+
+    # Determine new status (toggle between archived and unarchived)
+    if [ "$current_status" = "true" ]; then
+        new_status="unarchived"
+    else
+        new_status="archived"
+    fi
+
+    # Attempt to change archive status using GitHub CLI
+    log "Changing archive status of $repo from $current_status to $new_status"
+    output=$(gh repo edit "$repo" --"$new_status" 2>&1)
+    if [ $? -eq 0 ]; then
+        log "Successfully changed $repo to $new_status"
+        dialog --title "Success" --msgbox "Changed $repo to $new_status" 8 60
+        return 0
+    else
+        log "Failed to change $repo to $new_status. Error: $output"
+        
+        # Handle specific error cases
+        if echo "$output" | grep -q "API rate limit exceeded"; then
+            dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
+        elif echo "$output" | grep -q "Could not resolve to a Repository"; then
+            dialog --title "Error" --msgbox "Repository $repo not found or you don't have permission to modify it." 8 60
+        else
+            dialog --title "Error" --msgbox "Failed to change $repo archive status.\nError: $output" 10 60
+        fi
+        return 1
+    fi
+}
+
 # Function to validate repository name
 validate_repo_name() {
     local repo="$1"
@@ -211,6 +259,36 @@ process_selected_repos() {
                 dialog --msgbox "Successfully toggled visibility for $repo" 8 60
             else
                 dialog --msgbox "Failed to toggle visibility for $repo. Check the log file for details." 10 70
+            fi
+        fi
+    done
+}
+
+# Function to process selected repositories for archive status toggling
+process_selected_repos_archive() {
+    local selected_repos="$1"
+    local all_repos="$2"
+    local repo
+    local visibility
+    local archived
+
+    if [ "$selected_repos" = "BACK" ]; then
+        return
+    fi
+
+    if [ -z "$selected_repos" ]; then
+        return
+    fi
+
+    IFS=$'\n' read -d '' -r -a repo_array <<< "$all_repos"
+    for selection in $selected_repos; do
+        if [[ $selection =~ ^[0-9]+$ ]] && [ "$selection" -le "${#repo_array[@]}" ]; then
+            repo_info="${repo_array[$((selection-1))]}"
+            IFS='|' read -r repo visibility archived <<< "$repo_info"
+            if toggle_repo_archive_status "$repo"; then
+                dialog --msgbox "Successfully toggled archive status for $repo" 8 60
+            else
+                dialog --msgbox "Failed to toggle archive status for $repo. Check the log file for details." 10 70
             fi
         fi
     done
