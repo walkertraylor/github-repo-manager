@@ -149,7 +149,7 @@ check_empty_repo_list() {
 
 # Function to get all repositories
 get_all_repositories() {
-    gh repo list --json nameWithOwner,visibility --limit 1000 --jq '.[] | "\(.nameWithOwner)|\(.visibility)"'
+    gh repo list --json nameWithOwner,visibility,isArchived --limit 1000 --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"'
 }
 
 # Function to display repository selection menu
@@ -157,8 +157,9 @@ show_repo_selection_menu() {
     local repos="$1"
     local menu_items=()
     local i=1
-    while IFS='|' read -r repo visibility; do
-        menu_items+=("$i" "$repo ($visibility)" "off")
+    while IFS='|' read -r repo visibility archived; do
+        archived_status=$([ "$archived" = "true" ] && echo "[Archived]" || echo "")
+        menu_items+=("$i" "$repo ($visibility) $archived_status" "off")
         ((i++))
     done <<< "$repos"
 
@@ -173,12 +174,15 @@ process_selected_repos() {
     local all_repos="$2"
     local repo
     local visibility
+    local archived
 
     for selection in $selected_repos; do
         repo_info=$(echo "$all_repos" | sed -n "${selection}p")
-        IFS='|' read -r repo visibility <<< "$repo_info"
+        IFS='|' read -r repo visibility archived <<< "$repo_info"
         if validate_repo_name "$repo"; then
-            if toggle_repo_visibility "$repo"; then
+            if [ "$archived" = "true" ]; then
+                dialog --msgbox "Repository $repo is archived and cannot be modified." 8 60
+            elif toggle_repo_visibility "$repo"; then
                 dialog --msgbox "Successfully toggled visibility for $repo" 8 60
             else
                 dialog --msgbox "Failed to toggle visibility for $repo. Check the log file for details." 10 70
@@ -192,11 +196,12 @@ process_selected_repos() {
 # Function to list all repositories
 list_repositories() {
     echo "$(date): Listing all repositories" >> "$LOG_FILE"
-    local repo_list=$(gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner)|\(.visibility)"')
+    local repo_list=$(gh repo list --json nameWithOwner,visibility,isArchived --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"')
     local menu_items=()
     local i=1
-    while IFS='|' read -r repo visibility; do
-        menu_items+=("$i" "$repo - $visibility")
+    while IFS='|' read -r repo visibility archived; do
+        archived_status=$([ "$archived" = "true" ] && echo "[Archived]" || echo "")
+        menu_items+=("$i" "$repo - $visibility $archived_status")
         ((i++))
     done <<< "$repo_list"
 
