@@ -230,7 +230,7 @@ save_repo_status() {
     mkdir -p "$(dirname "$output_file")"
 
     log "Saving repository status to $output_file"
-    if ! gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner),\(.visibility)"' > "$output_file"; then
+    if ! gh repo list --json nameWithOwner,visibility,isArchived --jq '.[] | "\(.nameWithOwner),\(.visibility),\(.isArchived)"' > "$output_file"; then
         log "Failed to save repository status to $output_file"
         dialog --msgbox "Failed to save repository status. Please check your GitHub authentication and try again." 8 60
         return
@@ -261,20 +261,32 @@ load_and_apply_repo_status() {
     fi
 
     # Validate file content
-    if ! grep -qE '^[^,]+,(public|private)$' "$input_file"; then
-        dialog --msgbox "Invalid file format. Each line should be 'repo,visibility'." 8 60
+    if ! grep -qE '^[^,]+,(public|private),(true|false)$' "$input_file"; then
+        dialog --msgbox "Invalid file format. Each line should be 'repo,visibility,isArchived'." 8 60
         return
     fi
 
-    while IFS=',' read -r repo visibility; do
+    while IFS=',' read -r repo visibility is_archived; do
         if ! validate_repo_name "$repo"; then
             dialog --msgbox "Invalid repository name: $repo. Skipping." 8 60
             continue
         fi
-        dialog --yesno "Change $repo to $visibility?" 8 60
+        dialog --yesno "Change $repo to $visibility and archive status to $is_archived?" 8 70
         if [ $? -eq 0 ]; then
             if change_repo_visibility "$repo" "$visibility"; then
-                dialog --msgbox "Successfully changed $repo to $visibility" 8 60
+                if [ "$is_archived" = "true" ]; then
+                    if gh repo edit "$repo" --archived; then
+                        dialog --msgbox "Successfully changed $repo to $visibility and archived" 8 60
+                    else
+                        dialog --msgbox "Changed $repo to $visibility but failed to archive" 8 60
+                    fi
+                else
+                    if gh repo edit "$repo" --unarchived; then
+                        dialog --msgbox "Successfully changed $repo to $visibility and unarchived" 8 60
+                    else
+                        dialog --msgbox "Changed $repo to $visibility but failed to unarchive" 8 60
+                    fi
+                fi
             else
                 dialog --msgbox "Failed to change $repo to $visibility" 8 60
             fi
