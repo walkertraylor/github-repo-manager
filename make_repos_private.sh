@@ -223,7 +223,10 @@ while true; do
         2)
             all_repos=$(get_all_repositories)
             if check_empty_repo_list "$all_repos"; then
-                echo "$all_repos" | dialog --title "Repository List" --programbox 20 70
+                clear
+                echo "Repository List:"
+                echo "$all_repos" | column -t -s '|'
+                read -p "Press Enter to continue..."
             fi
             ;;
         3)
@@ -233,6 +236,7 @@ while true; do
             load_and_apply_repo_status
             ;;
         5)
+            clear
             echo "Exiting..."
             exit 0
             ;;
