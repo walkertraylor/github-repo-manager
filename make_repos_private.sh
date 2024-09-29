@@ -90,7 +90,7 @@ toggle_repo_visibility() {
     current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility' 2>&1)
     if [ $? -ne 0 ]; then
         echo "$(date): Failed to get visibility status for $repo. Error: $current_visibility" >> "$LOG_FILE"
-        dialog --title "Error" --msgbox "Failed to get visibility status for $repo." 8 60
+        dialog --title "Error" --msgbox "Failed to get visibility status for $repo.\nError: $current_visibility" 10 60
         return 1
     fi
 
@@ -118,8 +118,10 @@ toggle_repo_visibility() {
             dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
         elif echo "$output" | grep -q "Could not resolve to a Repository"; then
             dialog --title "Error" --msgbox "Repository $repo not found or you don't have permission to modify it." 8 60
+        elif echo "$output" | grep -q "is archived and cannot be edited"; then
+            dialog --title "Error" --msgbox "Repository $repo is archived and cannot be edited.\nPlease unarchive the repository first." 10 60
         else
-            dialog --title "Error" --msgbox "Failed to change $repo visibility. Error: $output" 10 60
+            dialog --title "Error" --msgbox "Failed to change $repo visibility.\nError: $output" 10 60
         fi
         return 1
     fi
