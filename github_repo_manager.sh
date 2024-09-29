@@ -252,7 +252,19 @@ CACHED_REPOS=""
 get_all_repositories() {
     # If the cache is empty, fetch repositories from GitHub CLI
     if [ -z "$CACHED_REPOS" ]; then
-        CACHED_REPOS=$(gh repo list --json nameWithOwner,visibility,isArchived --limit 1000 --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"')
+        log "Fetching repositories from GitHub CLI"
+        CACHED_REPOS=$(gh repo list --json nameWithOwner,visibility,isArchived --limit 1000 --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"' 2>&1)
+        if [ $? -ne 0 ]; then
+            log "Error fetching repositories: $CACHED_REPOS"
+            dialog --title "Error" --msgbox "Failed to fetch repositories from GitHub. Error: $CACHED_REPOS" 10 60
+            return 1
+        fi
+        if [ -z "$CACHED_REPOS" ]; then
+            log "No repositories found or empty response from GitHub CLI"
+            dialog --title "Warning" --msgbox "No repositories found or empty response from GitHub CLI. Please check your GitHub authentication and permissions." 10 60
+            return 1
+        fi
+        log "Successfully fetched repositories"
     fi
     echo "$CACHED_REPOS"
 }
@@ -661,7 +673,9 @@ while true; do
     refresh_cache=false
     case $choice in
         1)
-            all_repos=$(get_all_repositories)
+            if ! all_repos=$(get_all_repositories); then
+                continue
+            fi
             if check_empty_repo_list "$all_repos"; then
                 list_repositories
             fi
