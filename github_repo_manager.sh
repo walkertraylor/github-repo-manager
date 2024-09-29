@@ -223,6 +223,12 @@ toggle_repo_archive_status() {
     if [ $gh_result -eq 0 ]; then
         log "Successfully changed $repo to $new_status"
         dialog --title "Success" --msgbox "Changed $repo to $new_status" 8 60
+        log "Waiting for 5 seconds before refreshing cache..."
+        sleep 5
+        log "Refreshing repository cache..."
+        CACHED_REPOS=""
+        get_all_repositories >/dev/null
+        log "Cache refreshed"
         return 0
     elif [ $gh_result -eq 124 ]; then
         log "Error: GitHub CLI command timed out after 30 seconds"
