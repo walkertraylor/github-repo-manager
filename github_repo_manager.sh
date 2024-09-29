@@ -39,8 +39,8 @@ tag_key_color = (YELLOW,BLACK,OFF)
 tag_key_selected_color = (BLACK,YELLOW,OFF)
 check_color = (CYAN,BLACK,OFF)
 check_selected_color = (BLACK,CYAN,OFF)
-uarrow_color = (YELLOW,BLACK,OFF)
-darrow_color = (YELLOW,BLACK,OFF)
+uarrow_color = (CYAN,BLACK,OFF)
+darrow_color = (CYAN,BLACK,OFF)
 EOF
 
 # Colors for terminal output
