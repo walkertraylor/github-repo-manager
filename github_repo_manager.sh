@@ -334,7 +334,7 @@ search_repos() {
 # Function to display detailed repository information
 show_repo_details() {
     local repo="$1"
-    local repo_info=$(gh repo view "$repo" --json name,description,url,homepage,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,language,licenseInfo,stargazerCount,forkCount,issueCount,pullRequestCount)
+    local repo_info=$(gh repo view "$repo" --json name,description,url,homepage,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,languages,licenseInfo,stargazerCount,forkCount,openIssues,pullRequests)
     
     local name=$(echo "$repo_info" | jq -r '.name')
     local description=$(echo "$repo_info" | jq -r '.description // "N/A"')
@@ -347,12 +347,12 @@ show_repo_details() {
     local updated_at=$(echo "$repo_info" | jq -r '.updatedAt' | cut -d'T' -f1)
     local pushed_at=$(echo "$repo_info" | jq -r '.pushedAt' | cut -d'T' -f1)
     local disk_usage=$(echo "$repo_info" | jq -r '.diskUsage')
-    local language=$(echo "$repo_info" | jq -r '.language // "N/A"')
+    local language=$(echo "$repo_info" | jq -r '.languages[0].name // "N/A"')
     local license=$(echo "$repo_info" | jq -r '.licenseInfo.name // "N/A"')
     local stars=$(echo "$repo_info" | jq -r '.stargazerCount')
     local forks=$(echo "$repo_info" | jq -r '.forkCount')
-    local issues=$(echo "$repo_info" | jq -r '.issueCount')
-    local prs=$(echo "$repo_info" | jq -r '.pullRequestCount')
+    local issues=$(echo "$repo_info" | jq -r '.openIssues.totalCount')
+    local prs=$(echo "$repo_info" | jq -r '.pullRequests.totalCount')
 
     dialog --title "Repository Details: $repo" --msgbox "\
 Name: $name
