@@ -28,13 +28,40 @@ fi
 change_repo_visibility() {
     local repo="$1"
     local visibility="$2"
-    if gh repo edit "$repo" --visibility "$visibility" 2>/dev/null; then
+    local output
+    output=$(gh repo edit "$repo" --visibility "$visibility" 2>&1)
+    if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Changed $repo to $visibility${NC}"
         return 0
     else
-        echo -e "${RED}❌ Failed to change $repo to $visibility${NC}"
+        if echo "$output" | grep -q "API rate limit exceeded"; then
+            echo -e "${RED}❌ GitHub API rate limit exceeded. Please try again later.${NC}"
+            return 2
+        else
+            echo -e "${RED}❌ Failed to change $repo to $visibility: $output${NC}"
+            return 1
+        fi
+    fi
+}
+
+# Function to validate repository name
+validate_repo_name() {
+    local repo="$1"
+    if [[ $repo =~ ^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$ ]]; then
+        return 0
+    else
         return 1
     fi
+}
+
+# Function to check for empty repository list
+check_empty_repo_list() {
+    local repos="$1"
+    if [ -z "$repos" ]; then
+        dialog --msgbox "No repositories found. Please check your GitHub authentication and try again." 8 60
+        return 1
+    fi
+    return 0
 }
 
 # Function to get all repositories
@@ -91,8 +118,17 @@ save_repo_status() {
         return
     fi
 
+    # Validate filename
+    if [[ ! $output_file =~ ^[a-zA-Z0-9_.-]+$ ]]; then
+        dialog --msgbox "Invalid filename. Please use only letters, numbers, underscores, hyphens, and periods." 8 60
+        return
+    fi
+
     echo -e "${YELLOW}Saving repository status to $output_file${NC}"
-    gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner),\(.visibility)"' > "$output_file"
+    if ! gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner),\(.visibility)"' > "$output_file"; then
+        dialog --msgbox "Failed to save repository status. Please check your GitHub authentication and try again." 8 60
+        return
+    fi
     echo -e "${GREEN}✅ Saved repository status to $output_file${NC}"
     dialog --msgbox "Repository status saved to $output_file" 8 60
 }
@@ -107,7 +143,17 @@ load_and_apply_repo_status() {
         return
     fi
 
+    # Validate file content
+    if ! grep -qE '^[^,]+,(public|private)$' "$input_file"; then
+        dialog --msgbox "Invalid file format. Each line should be 'repo,visibility'." 8 60
+        return
+    fi
+
     while IFS=',' read -r repo visibility; do
+        if ! validate_repo_name "$repo"; then
+            dialog --msgbox "Invalid repository name: $repo. Skipping." 8 60
+            continue
+        fi
         dialog --yesno "Change $repo to $visibility?" 8 60
         if [ $? -eq 0 ]; then
             if change_repo_visibility "$repo" "$visibility"; then
@@ -143,15 +189,24 @@ while true; do
     case $choice in
         1)
             all_repos=$(get_all_repositories)
-            selected_repos=$(show_repo_selection_menu "$all_repos")
-            for selection in $selected_repos; do
-                repo_info=$(echo "$all_repos" | sed -n "${selection}p")
-                IFS='|' read -r repo visibility <<< "$repo_info"
-                toggle_repo_visibility "$repo" "$visibility"
-            done
+            if check_empty_repo_list "$all_repos"; then
+                selected_repos=$(show_repo_selection_menu "$all_repos")
+                for selection in $selected_repos; do
+                    repo_info=$(echo "$all_repos" | sed -n "${selection}p")
+                    IFS='|' read -r repo visibility <<< "$repo_info"
+                    if validate_repo_name "$repo"; then
+                        toggle_repo_visibility "$repo" "$visibility"
+                    else
+                        dialog --msgbox "Invalid repository name: $repo. Skipping." 8 60
+                    fi
+                done
+            fi
             ;;
         2)
-            list_repositories | dialog --title "Repository List" --programbox 20 70
+            all_repos=$(get_all_repositories)
+            if check_empty_repo_list "$all_repos"; then
+                echo "$all_repos" | dialog --title "Repository List" --programbox 20 70
+            fi
             ;;
         3)
             save_repo_status
