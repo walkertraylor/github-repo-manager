@@ -6,6 +6,24 @@ RED='\033[0;31m'
 YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
+# Function to check if a command is available
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Check if required commands are installed
+if ! command_exists gh; then
+    echo "GitHub CLI (gh) is not installed. Please install it and try again."
+    exit 1
+fi
+
+if ! command_exists dialog; then
+    echo "The 'dialog' library is not installed. Please install it and try again."
+    echo "On Ubuntu/Debian: sudo apt-get install dialog"
+    echo "On macOS with Homebrew: brew install dialog"
+    exit 1
+fi
+
 # Function to change repo visibility
 change_repo_visibility() {
     local repo="$1"
@@ -40,12 +58,6 @@ backup_visibility_status() {
     export_visibility_status "$backup_file"
     echo -e "${GREEN}✅ Backed up repository visibility status to $backup_file${NC}"
 }
-
-# Check if GitHub CLI is installed
-if ! command -v gh &> /dev/null; then
-    echo "GitHub CLI (gh) is not installed. Please install it and try again."
-    exit 1
-fi
 
 # Set PAGER to 'cat' to prevent pagination
 export PAGER=cat
