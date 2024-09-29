@@ -151,10 +151,12 @@ toggle_repo_archive_status() {
     # Determine new status (toggle between archived and unarchived)
     if [ "$current_status" = "true" ]; then
         new_status="unarchived"
+        archive_flag="false"
     else
         new_status="archived"
+        archive_flag="true"
     fi
-    log "New status will be: $new_status"
+    log "New status will be: $new_status (archive_flag: $archive_flag)"
 
     # Confirmation dialog
     log "Preparing to show confirmation dialog"
@@ -171,11 +173,7 @@ toggle_repo_archive_status() {
 
     # Attempt to change archive status using GitHub CLI
     log "Attempting to change archive status of $repo from $current_status to $new_status"
-    if [ "$new_status" = "archived" ]; then
-        output=$(gh repo edit "$repo" --archived=true 2>&1)
-    else
-        output=$(gh repo edit "$repo" --archived=false 2>&1)
-    fi
+    output=$(gh repo edit "$repo" --archived="$archive_flag" 2>&1)
     local gh_result=$?
     log "GitHub CLI command result: $gh_result"
     log "GitHub CLI output: $output"
