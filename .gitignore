@@ -1,12 +1,6 @@
 # Aider programming tool config
 .aider*
 
-# Status datafiles
-*.csv
-
-# Logfiles
-*.log
-
 # CSV files
 *.csv
 
