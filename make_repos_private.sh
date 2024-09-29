@@ -3,18 +3,26 @@
 # Colors for output
 GREEN='\033[0;32m'
 RED='\033[0;31m'
+YELLOW='\033[0;33m'
 NC='\033[0m' # No Color
 
 # Function to change repo visibility
 change_repo_visibility() {
     local repo="$1"
-    if gh repo edit "$repo" --visibility private 2>/dev/null; then
-        echo -e "${GREEN}✅ Changed $repo to private${NC}"
+    local visibility="$2"
+    if gh repo edit "$repo" --visibility "$visibility" 2>/dev/null; then
+        echo -e "${GREEN}✅ Changed $repo to $visibility${NC}"
         ((success_count++))
     else
-        echo -e "${RED}❌ Failed to change $repo to private${NC}"
+        echo -e "${RED}❌ Failed to change $repo to $visibility${NC}"
         failed_repos+=("$repo")
     fi
+}
+
+# Function to list all repositories
+list_repositories() {
+    echo -e "${YELLOW}Listing all repositories:${NC}"
+    gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner) - \(.visibility)"'
 }
 
 # Check if GitHub CLI is installed
@@ -24,7 +32,44 @@ if ! command -v gh &> /dev/null; then
 fi
 
 # Main script
-echo "This script will change all your public repositories to private."
+echo "GitHub Repository Visibility Manager"
+
+# Get total number of repositories
+total_repos=$(gh repo list --limit 1000 | wc -l)
+echo "Total number of repositories: $total_repos"
+
+# Menu
+echo -e "\nWhat would you like to do?"
+echo "1. Change all public repositories to private"
+echo "2. Change all private repositories to public"
+echo "3. List all repositories"
+echo "4. Exit"
+read -p "Enter your choice (1-4): " choice
+
+case $choice in
+    1)
+        target_visibility="private"
+        source_visibility="public"
+        ;;
+    2)
+        target_visibility="public"
+        source_visibility="private"
+        ;;
+    3)
+        list_repositories
+        exit 0
+        ;;
+    4)
+        echo "Exiting."
+        exit 0
+        ;;
+    *)
+        echo "Invalid choice. Exiting."
+        exit 1
+        ;;
+esac
+
+echo "This action will change all $source_visibility repositories to $target_visibility."
 echo "This action cannot be undone easily. Are you sure you want to proceed? (y/n)"
 read -r confirm
 
@@ -33,36 +78,36 @@ if [[ ! $confirm =~ ^[Yy]$ ]]; then
     exit 0
 fi
 
-echo "Changing all public repositories to private..."
+echo "Changing $source_visibility repositories to $target_visibility..."
 echo "This may take a while depending on the number of repositories."
 
-# Get list of public repositories
-public_repos=$(gh repo list --json nameWithOwner,visibility --jq '.[] | select(.visibility == "public") | .nameWithOwner')
+# Get list of repositories to change
+repos_to_change=$(gh repo list --json nameWithOwner,visibility --jq ".[] | select(.visibility == \"$source_visibility\") | .nameWithOwner")
 
-# Check if there are any public repos
-if [ -z "$public_repos" ]; then
-    echo "No public repositories found."
+# Check if there are any repos to change
+if [ -z "$repos_to_change" ]; then
+    echo "No $source_visibility repositories found."
     exit 0
 fi
 
 # Count of repositories
-total_repos=$(echo "$public_repos" | wc -l)
+total_to_change=$(echo "$repos_to_change" | wc -l)
 current=0
 success_count=0
 failed_repos=()
 
 # Loop through repositories and change visibility
-echo "$public_repos" | while read -r repo; do
+echo "$repos_to_change" | while read -r repo; do
     ((current++))
-    percentage=$((current * 100 / total_repos))
+    percentage=$((current * 100 / total_to_change))
     echo -ne "[$percentage%] Processing $repo\r"
-    change_repo_visibility "$repo"
+    change_repo_visibility "$repo" "$target_visibility"
 done
 
 echo -e "\nFinished processing all repositories."
 echo "Summary:"
-echo "- Total repositories processed: $total_repos"
-echo "- Successfully changed to private: $success_count"
+echo "- Total repositories processed: $total_to_change"
+echo "- Successfully changed to $target_visibility: $success_count"
 echo "- Failed to change: ${#failed_repos[@]}"
 
 if [ ${#failed_repos[@]} -gt 0 ]; then
