@@ -1,7 +1,26 @@
 #!/bin/bash
 
 # GitHub Repository Manager
-# Version 1.0
+# A tool to manage GitHub repositories, including visibility and archive status
+#
+# This script provides a menu-driven interface to manage GitHub repositories,
+# allowing users to toggle visibility, archive status, and perform other
+# repository management tasks.
+#
+# Features:
+# - List all repositories
+# - Toggle visibility for selected repositories
+# - Toggle archive status for selected repositories
+# - Save and load repository status
+# - Search repositories
+# - Show detailed repository information
+#
+# Requirements:
+# - GitHub CLI (gh) must be installed and authenticated
+# - jq must be installed for JSON parsing
+# - dialog must be installed for the interactive menu interface
+#
+# Usage: ./github_repo_manager.sh
 
 # Set up logging
 LOG_FILE="github_repo_manager.log"
@@ -9,7 +28,7 @@ log() {
     echo "$(date): $1" >> "$LOG_FILE"
 }
 
-log "Script started (Version 1.0)"
+log "Script started"
 
 # Dialog color settings
 export DIALOGRC="/tmp/dialogrc"
