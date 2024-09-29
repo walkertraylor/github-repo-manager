@@ -484,9 +484,15 @@ show_repo_details() {
     local repo="$1"
     local repo_info
     local error_message
+    local commit_info
 
     log "Fetching repository information for $repo"
     repo_info=$(gh repo view "$repo" --json name,description,url,homepageUrl,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,languages,licenseInfo,stargazerCount,forkCount,issues,pullRequests 2>&1)
+    
+    if [ $? -eq 0 ]; then
+        local default_branch=$(echo "$repo_info" | jq -r '.defaultBranchRef.name // "main"')
+        commit_info=$(gh api "repos/$repo/commits?per_page=1&sha=$default_branch" --jq '[.[0].sha, (. | length)]' 2>&1)
+    fi
     if [ $? -ne 0 ]; then
         error_message="Failed to fetch repository information for $repo. Error: $repo_info"
         log "$error_message"
@@ -521,6 +527,13 @@ show_repo_details() {
     local forks=$(echo "$repo_info" | jq -r '.forkCount // "N/A"')
     local issues=$(echo "$repo_info" | jq -r '.issues.totalCount // "N/A"')
     local prs=$(echo "$repo_info" | jq -r '.pullRequests.totalCount // "N/A"')
+    
+    local commit_count="N/A"
+    local committer_count="N/A"
+    if [ $? -eq 0 ]; then
+        commit_count=$(gh api "repos/$repo/commits?per_page=1" --jq '.[0].commit.tree.sha' | xargs -I {} gh api "repos/$repo/commits?sha={}" --jq 'length')
+        committer_count=$(gh api "repos/$repo/contributors?per_page=100" --jq 'length')
+    fi
 
     local details="
 Name: $name
@@ -539,7 +552,9 @@ License: $license
 Stars: $stars
 Forks: $forks
 Open Issues: $issues
-Open Pull Requests: $prs"
+Open Pull Requests: $prs
+Commit Count: $commit_count
+Committer Count: $committer_count"
 
     log "Formatted repository details for $repo: $details"
     dialog --title "Repository Details: $repo" --msgbox "$details" 22 76
