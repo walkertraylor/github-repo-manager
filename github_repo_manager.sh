@@ -531,7 +531,7 @@ show_repo_details() {
     local commit_count="N/A"
     local committer_count="N/A"
     if [ $? -eq 0 ]; then
-        commit_count=$(gh api "repos/$repo/commits?per_page=1" --jq '.[0].commit.tree.sha' | xargs -I {} gh api "repos/$repo/commits?sha={}" --jq 'length')
+        commit_count=$(gh api "repos/$repo/commits?per_page=1" --jq 'total_count')
         committer_count=$(gh api "repos/$repo/contributors?per_page=100" --jq 'length')
     fi
 
