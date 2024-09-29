@@ -1,0 +1,8 @@
+#aider programming tool config
+.aider*
+
+#status datafiles
+*.csv
+
+#logfiles
+*.log
