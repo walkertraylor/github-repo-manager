@@ -140,23 +140,25 @@ toggle_repo_archive_status() {
     log "Checking current archive status of $repo"
     # Get current archive status using GitHub CLI
     current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>&1)
-    if [ $? -ne 0 ]; then
+    local get_status_result=$?
+    log "Get current archive status result: $get_status_result"
+    log "Current archive status of $repo: $current_status"
+
+    if [ $get_status_result -ne 0 ]; then
         log "Failed to get archive status for $repo. Error: $current_status"
         dialog --title "Error" --msgbox "Failed to get archive status for $repo.\nError: $current_status" 10 60
         return 1
     fi
 
-    log "Current archive status of $repo: $current_status"
-
     # Determine new status (toggle between archived and unarchived)
     if [ "$current_status" = "true" ]; then
         new_status="unarchived"
-        archive_flag="false"
+        archive_action="unarchive"
     else
         new_status="archived"
-        archive_flag="true"
+        archive_action="archive"
     fi
-    log "New status will be: $new_status (archive_flag: $archive_flag)"
+    log "New status will be: $new_status (archive_action: $archive_action)"
 
     # Confirmation dialog
     log "Preparing to show confirmation dialog"
@@ -173,7 +175,7 @@ toggle_repo_archive_status() {
 
     # Attempt to change archive status using GitHub CLI
     log "Attempting to change archive status of $repo from $current_status to $new_status"
-    output=$(gh repo edit "$repo" --archived="$archive_flag" 2>&1)
+    output=$(gh repo $archive_action "$repo" 2>&1)
     local gh_result=$?
     log "GitHub CLI command result: $gh_result"
     log "GitHub CLI output: $output"
