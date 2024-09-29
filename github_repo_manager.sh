@@ -351,7 +351,7 @@ show_repo_details() {
         log "$error_message"
         dialog --title "Error" --msgbox "$error_message" 8 60
         return
-    }
+    fi
 
     log "Successfully fetched repository information for $repo"
     log "Raw repository info: $repo_info"
