@@ -329,6 +329,7 @@ search_repos() {
 # Function to display the main menu
 show_main_menu() {
     dialog --clear --title "GitHub Repository Manager" \
+           --no-cancel \
            --menu "Choose an operation:" 20 70 8 \
            1 "List all repositories" \
            2 "Toggle visibility for selected repositories" \
