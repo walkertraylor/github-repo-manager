@@ -1,6 +1,6 @@
 # GitHub Repository Manager
 
-A command-line tool for managing GitHub repositories, including visibility toggling and detailed repository information.
+A command-line tool for managing GitHub repositories for toggling between private and public, archiving and unarchiving, and displaying detailed repository information.
 
 ## Prerequisites
 
