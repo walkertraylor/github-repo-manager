@@ -334,32 +334,43 @@ search_repos() {
 # Function to display detailed repository information
 show_repo_details() {
     local repo="$1"
-    local repo_info=$(gh repo view "$repo" --json name,description,url,homepage,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,languages,licenseInfo,stargazerCount,forkCount,openIssues,pullRequests)
-    
-    if [ -z "$repo_info" ]; then
-        dialog --title "Error" --msgbox "Failed to fetch repository information for $repo" 8 60
+    local repo_info
+    local error_message
+
+    repo_info=$(gh repo view "$repo" --json name,description,url,homepage,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,languages,licenseInfo,stargazerCount,forkCount,openIssues,pullRequests 2>&1)
+    if [ $? -ne 0 ]; then
+        error_message="Failed to fetch repository information for $repo. Error: $repo_info"
+        log "$error_message"
+        dialog --title "Error" --msgbox "$error_message" 10 60
         return
     fi
 
-    local name=$(echo "$repo_info" | jq -r '.name')
+    if [ -z "$repo_info" ]; then
+        error_message="No information retrieved for repository $repo"
+        log "$error_message"
+        dialog --title "Error" --msgbox "$error_message" 8 60
+        return
+    fi
+
+    local name=$(echo "$repo_info" | jq -r '.name // "N/A"')
     local description=$(echo "$repo_info" | jq -r '.description // "N/A"')
-    local url=$(echo "$repo_info" | jq -r '.url')
+    local url=$(echo "$repo_info" | jq -r '.url // "N/A"')
     local homepage=$(echo "$repo_info" | jq -r '.homepage // "N/A"')
     local default_branch=$(echo "$repo_info" | jq -r '.defaultBranchRef.name // "N/A"')
     local visibility=$(echo "$repo_info" | jq -r 'if .isPrivate then "Private" else "Public" end')
     local archived=$(echo "$repo_info" | jq -r 'if .isArchived then "Yes" else "No" end')
-    local created_at=$(echo "$repo_info" | jq -r '.createdAt' | cut -d'T' -f1)
-    local updated_at=$(echo "$repo_info" | jq -r '.updatedAt' | cut -d'T' -f1)
-    local pushed_at=$(echo "$repo_info" | jq -r '.pushedAt' | cut -d'T' -f1)
-    local disk_usage=$(echo "$repo_info" | jq -r '.diskUsage')
+    local created_at=$(echo "$repo_info" | jq -r '.createdAt // "N/A"' | cut -d'T' -f1)
+    local updated_at=$(echo "$repo_info" | jq -r '.updatedAt // "N/A"' | cut -d'T' -f1)
+    local pushed_at=$(echo "$repo_info" | jq -r '.pushedAt // "N/A"' | cut -d'T' -f1)
+    local disk_usage=$(echo "$repo_info" | jq -r '.diskUsage // "N/A"')
     local language=$(echo "$repo_info" | jq -r '(.languages | keys)[0] // "N/A"')
     local license=$(echo "$repo_info" | jq -r '.licenseInfo.name // "N/A"')
-    local stars=$(echo "$repo_info" | jq -r '.stargazerCount')
-    local forks=$(echo "$repo_info" | jq -r '.forkCount')
-    local issues=$(echo "$repo_info" | jq -r '.openIssues.totalCount')
-    local prs=$(echo "$repo_info" | jq -r '.pullRequests.totalCount')
+    local stars=$(echo "$repo_info" | jq -r '.stargazerCount // "N/A"')
+    local forks=$(echo "$repo_info" | jq -r '.forkCount // "N/A"')
+    local issues=$(echo "$repo_info" | jq -r '.openIssues.totalCount // "N/A"')
+    local prs=$(echo "$repo_info" | jq -r '.pullRequests.totalCount // "N/A"')
 
-    dialog --title "Repository Details: $repo" --msgbox "
+    local details="
 Name: $name
 Description: $description
 URL: $url
@@ -376,7 +387,10 @@ License: $license
 Stars: $stars
 Forks: $forks
 Open Issues: $issues
-Open Pull Requests: $prs" 22 76
+Open Pull Requests: $prs"
+
+    log "Repository details for $repo: $details"
+    dialog --title "Repository Details: $repo" --msgbox "$details" 22 76
 }
 
 # Function to display the main menu
