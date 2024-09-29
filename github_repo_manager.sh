@@ -11,36 +11,36 @@ log "Script started"
 # Dialog color settings
 export DIALOGRC="/tmp/dialogrc"
 cat > "$DIALOGRC" << EOF
-use_shadow = ON
+use_shadow = OFF
 use_colors = ON
-screen_color = (BLACK,GREEN,ON)
-dialog_color = (GREEN,BLACK,OFF)
-title_color = (GREEN,BLACK,ON)
-border_color = (GREEN,BLACK,ON)
-button_active_color = (BLACK,GREEN,ON)
-button_inactive_color = (GREEN,BLACK,OFF)
-button_key_active_color = (BLACK,GREEN,ON)
-button_key_inactive_color = (GREEN,BLACK,OFF)
-button_label_active_color = (BLACK,GREEN,ON)
-button_label_inactive_color = (GREEN,BLACK,ON)
-inputbox_color = (GREEN,BLACK,OFF)
-inputbox_border_color = (GREEN,BLACK,OFF)
-searchbox_color = (GREEN,BLACK,OFF)
-searchbox_title_color = (BLACK,GREEN,ON)
-searchbox_border_color = (GREEN,BLACK,ON)
-position_indicator_color = (GREEN,BLACK,ON)
-menubox_color = (GREEN,BLACK,OFF)
-menubox_border_color = (GREEN,BLACK,ON)
-item_color = (GREEN,BLACK,OFF)
-item_selected_color = (BLACK,GREEN,ON)
-tag_color = (GREEN,BLACK,ON)
-tag_selected_color = (BLACK,GREEN,ON)
-tag_key_color = (GREEN,BLACK,ON)
-tag_key_selected_color = (BLACK,GREEN,ON)
-check_color = (GREEN,BLACK,OFF)
-check_selected_color = (BLACK,GREEN,ON)
-uarrow_color = (GREEN,BLACK,ON)
-darrow_color = (GREEN,BLACK,ON)
+screen_color = (BLACK,BLACK,OFF)
+dialog_color = (CYAN,BLACK,OFF)
+title_color = (YELLOW,BLACK,OFF)
+border_color = (WHITE,BLACK,OFF)
+button_active_color = (BLACK,CYAN,OFF)
+button_inactive_color = (CYAN,BLACK,OFF)
+button_key_active_color = (BLACK,CYAN,OFF)
+button_key_inactive_color = (CYAN,BLACK,OFF)
+button_label_active_color = (BLACK,CYAN,OFF)
+button_label_inactive_color = (CYAN,BLACK,OFF)
+inputbox_color = (CYAN,BLACK,OFF)
+inputbox_border_color = (CYAN,BLACK,OFF)
+searchbox_color = (CYAN,BLACK,OFF)
+searchbox_title_color = (YELLOW,BLACK,OFF)
+searchbox_border_color = (CYAN,BLACK,OFF)
+position_indicator_color = (YELLOW,BLACK,OFF)
+menubox_color = (CYAN,BLACK,OFF)
+menubox_border_color = (CYAN,BLACK,OFF)
+item_color = (CYAN,BLACK,OFF)
+item_selected_color = (BLACK,CYAN,OFF)
+tag_color = (YELLOW,BLACK,OFF)
+tag_selected_color = (BLACK,YELLOW,OFF)
+tag_key_color = (YELLOW,BLACK,OFF)
+tag_key_selected_color = (BLACK,YELLOW,OFF)
+check_color = (CYAN,BLACK,OFF)
+check_selected_color = (BLACK,CYAN,OFF)
+uarrow_color = (YELLOW,BLACK,OFF)
+darrow_color = (YELLOW,BLACK,OFF)
 EOF
 
 # Colors for terminal output
@@ -49,6 +49,7 @@ BRIGHT_GREEN='\033[1;32m'
 DARK_GREEN='\033[2;32m'
 YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
+GRAY='\033[0;90m'
 NC='\033[0m' # No Color
 
 # Function to check if a command is available
