@@ -2,9 +2,11 @@
 
 # Set up logging
 LOG_FILE="repo_visibility_changer.log"
-exec >> "$LOG_FILE" 2>&1
+log() {
+    echo "$(date): $1" >> "$LOG_FILE"
+}
 
-echo "Script started at $(date)"
+log "Script started"
 
 # Dialog color settings
 export DIALOGRC="/tmp/dialogrc"
@@ -84,18 +86,18 @@ toggle_repo_visibility() {
     local new_visibility
     local output
 
-    echo "$(date): Checking current visibility of $repo" >> "$LOG_FILE"
+    log "Checking current visibility of $repo"
 
     # Get current visibility
     current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility' 2>&1)
     if [ $? -ne 0 ]; then
-        echo "$(date): Failed to get visibility status for $repo. Error: $current_visibility" >> "$LOG_FILE"
+        log "Failed to get visibility status for $repo. Error: $current_visibility"
         dialog --title "Error" --msgbox "Failed to get visibility status for $repo.\nError: $current_visibility" 10 60
         return 1
     fi
 
     current_visibility=$(echo "$current_visibility" | tr '[:upper:]' '[:lower:]')
-    echo "$(date): Current visibility of $repo: $current_visibility" >> "$LOG_FILE"
+    log "Current visibility of $repo: $current_visibility"
 
     # Determine new visibility
     if [ "$current_visibility" = "public" ]; then
@@ -105,14 +107,14 @@ toggle_repo_visibility() {
     fi
 
     # Change visibility
-    echo "$(date): Changing visibility of $repo from $current_visibility to $new_visibility" >> "$LOG_FILE"
+    log "Changing visibility of $repo from $current_visibility to $new_visibility"
     output=$(gh repo edit "$repo" --visibility "$new_visibility" 2>&1)
     if [ $? -eq 0 ]; then
-        echo "$(date): Successfully changed $repo from $current_visibility to $new_visibility" >> "$LOG_FILE"
+        log "Successfully changed $repo from $current_visibility to $new_visibility"
         dialog --title "Success" --msgbox "Changed $repo from $current_visibility to $new_visibility" 8 60
         return 0
     else
-        echo "$(date): Failed to change $repo from $current_visibility to $new_visibility. Error: $output" >> "$LOG_FILE"
+        log "Failed to change $repo from $current_visibility to $new_visibility. Error: $output"
         
         if echo "$output" | grep -q "API rate limit exceeded"; then
             dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
@@ -197,15 +199,16 @@ process_selected_repos() {
 list_repositories() {
     echo "$(date): Listing all repositories" >> "$LOG_FILE"
     local repo_list=$(gh repo list --json nameWithOwner,visibility,isArchived --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"')
-    local display_list=""
+    local temp_file=$(mktemp)
     local i=1
     while IFS='|' read -r repo visibility archived; do
         archived_status=$([ "$archived" = "true" ] && echo "[Archived]" || echo "")
-        display_list+="$i. $repo - $visibility $archived_status\n"
+        echo "$i $repo ($visibility) $archived_status" >> "$temp_file"
         ((i++))
     done <<< "$repo_list"
 
-    dialog --title "Repository List" --msgbox "Repositories and their visibility:\n\n$display_list" 24 80
+    dialog --title "Repository List" --menu "Repositories and their visibility:" 24 80 20 --file "$temp_file"
+    rm "$temp_file"
 }
 
 # Function to save repository status
@@ -227,13 +230,13 @@ save_repo_status() {
     # Ensure the directory exists
     mkdir -p "$(dirname "$output_file")"
 
-    echo "$(date): Saving repository status to $output_file" >> "$LOG_FILE"
+    log "Saving repository status to $output_file"
     if ! gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner),\(.visibility)"' > "$output_file"; then
-        echo "$(date): Failed to save repository status to $output_file" >> "$LOG_FILE"
+        log "Failed to save repository status to $output_file"
         dialog --msgbox "Failed to save repository status. Please check your GitHub authentication and try again." 8 60
         return
     fi
-    echo "$(date): Successfully saved repository status to $output_file" >> "$LOG_FILE"
+    log "Successfully saved repository status to $output_file"
     dialog --msgbox "Repository status saved to $output_file" 8 60
 }
 
