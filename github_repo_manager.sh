@@ -678,7 +678,7 @@ Committer Count: $committer_count"
 
     log "Formatted repository details for $repo: $details"
     
-    dialog --title "Repository Details: $repo" $(calculate_dialog_size 22 76) --msgbox "$details"
+    dialog --title "Repository Details: $repo" --msgbox "$details" $(calculate_dialog_size 22 76)
 }
 
 # Function to display the main menu
