@@ -429,7 +429,7 @@ load_and_apply_repo_status() {
         dialog --yesno "Change $repo to $visibility and archive status to $is_archived?" 8 70
         if [ $? -eq 0 ]; then
             log "Attempting to change $repo to $visibility and archive status to $is_archived"
-            if change_repo_visibility "$repo" "$visibility"; then
+            if toggle_repo_visibility "$repo"; then
                 if [ "$is_archived" = "true" ]; then
                     if gh repo edit "$repo" --archived; then
                         log "Successfully changed $repo to $visibility and archived"
@@ -458,6 +458,30 @@ load_and_apply_repo_status() {
 
     log "Finished applying repository status from $input_file"
     dialog --msgbox "Finished applying repository status from $input_file" 8 60
+}
+
+# Function to change repository visibility
+change_repo_visibility() {
+    local repo="$1"
+    local new_visibility="$2"
+    local current_visibility
+
+    # Get current visibility
+    current_visibility=$(gh repo view "$repo" --json isPrivate --jq 'if .isPrivate then "private" else "public" end')
+
+    if [ "$current_visibility" = "$new_visibility" ]; then
+        log "Repository $repo is already $new_visibility"
+        return 0
+    fi
+
+    # Change visibility
+    if gh repo edit "$repo" --visibility "$new_visibility"; then
+        log "Successfully changed $repo to $new_visibility"
+        return 0
+    else
+        log "Failed to change $repo to $new_visibility"
+        return 1
+    fi
 }
 
 # Set PAGER to 'cat' to prevent pagination
