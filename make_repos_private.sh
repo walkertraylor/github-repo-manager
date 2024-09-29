@@ -339,8 +339,8 @@ search_repos() {
 show_main_menu() {
     dialog --clear --title "GitHub Repository Visibility Manager" \
            --menu "Choose an operation:" 20 70 8 \
-           1 "Toggle visibility for selected repositories" \
-           2 "List all repositories" \
+           1 "List all repositories" \
+           2 "Toggle visibility for selected repositories" \
            3 "Save current repository status" \
            4 "Load and apply repository status" \
            5 "Search repositories" \
@@ -356,14 +356,14 @@ while true; do
         1)
             all_repos=$(get_all_repositories)
             if check_empty_repo_list "$all_repos"; then
-                selected_repos=$(show_repo_selection_menu "$all_repos")
-                process_selected_repos "$selected_repos" "$all_repos"
+                list_repositories
             fi
             ;;
         2)
             all_repos=$(get_all_repositories)
             if check_empty_repo_list "$all_repos"; then
-                list_repositories
+                selected_repos=$(show_repo_selection_menu "$all_repos")
+                process_selected_repos "$selected_repos" "$all_repos"
             fi
             ;;
         3)
