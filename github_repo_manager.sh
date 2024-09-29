@@ -430,7 +430,7 @@ show_main_menu() {
 }
 
 # Main script
-echo "GitHub Repository Visibility Manager"
+echo "GitHub Repository Manager"
 
 refresh_cache=false
 while true; do
