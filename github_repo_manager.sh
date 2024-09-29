@@ -336,18 +336,23 @@ show_repo_details() {
     local repo="$1"
     local repo_info=$(gh repo view "$repo" --json name,description,url,homepage,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,languages,licenseInfo,stargazerCount,forkCount,openIssues,pullRequests)
     
+    if [ -z "$repo_info" ]; then
+        dialog --title "Error" --msgbox "Failed to fetch repository information for $repo" 8 60
+        return
+    fi
+
     local name=$(echo "$repo_info" | jq -r '.name')
     local description=$(echo "$repo_info" | jq -r '.description // "N/A"')
     local url=$(echo "$repo_info" | jq -r '.url')
     local homepage=$(echo "$repo_info" | jq -r '.homepage // "N/A"')
-    local default_branch=$(echo "$repo_info" | jq -r '.defaultBranchRef.name')
+    local default_branch=$(echo "$repo_info" | jq -r '.defaultBranchRef.name // "N/A"')
     local visibility=$(echo "$repo_info" | jq -r 'if .isPrivate then "Private" else "Public" end')
     local archived=$(echo "$repo_info" | jq -r 'if .isArchived then "Yes" else "No" end')
     local created_at=$(echo "$repo_info" | jq -r '.createdAt' | cut -d'T' -f1)
     local updated_at=$(echo "$repo_info" | jq -r '.updatedAt' | cut -d'T' -f1)
     local pushed_at=$(echo "$repo_info" | jq -r '.pushedAt' | cut -d'T' -f1)
     local disk_usage=$(echo "$repo_info" | jq -r '.diskUsage')
-    local language=$(echo "$repo_info" | jq -r '.languages[0].name // "N/A"')
+    local language=$(echo "$repo_info" | jq -r '(.languages | keys)[0] // "N/A"')
     local license=$(echo "$repo_info" | jq -r '.licenseInfo.name // "N/A"')
     local stars=$(echo "$repo_info" | jq -r '.stargazerCount')
     local forks=$(echo "$repo_info" | jq -r '.forkCount')
