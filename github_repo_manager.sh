@@ -189,9 +189,10 @@ process_selected_repos() {
         return
     fi
 
+    IFS=$'\n' read -d '' -r -a repo_array <<< "$all_repos"
     for selection in $selected_repos; do
-        repo_info=$(echo "$all_repos" | sed -n "${selection}p")
-        if [ -n "$repo_info" ]; then
+        if [[ $selection =~ ^[0-9]+$ ]] && [ "$selection" -le "${#repo_array[@]}" ]; then
+            repo_info="${repo_array[$((selection-1))]}"
             IFS='|' read -r repo visibility archived <<< "$repo_info"
             if [ "$archived" = "true" ]; then
                 dialog --msgbox "Repository $repo is archived and cannot be modified." 8 60
