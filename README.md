@@ -2,18 +2,6 @@
 
 A command-line tool for managing GitHub repositories, including visibility toggling and detailed repository information.
 
-## Development Environment
-
-This project is developed and tested on macOS using Zsh. It is not optimized for other operating systems or shells.
-
-- **Operating System**: macOS
-- **Shell**: Zsh
-
-To check your Zsh version, run:
-```zsh
-zsh --version
-```
-
 ## Prerequisites
 
 - GitHub CLI (gh)
@@ -23,25 +11,22 @@ zsh --version
 ## Installation
 
 1. Clone the repository:
-   ```zsh
+   ```bash
    git clone https://github.com/yourusername/github-repo-manager.git
    cd github-repo-manager
    ```
 
-2. Ensure you have the required dependencies:
-   ```zsh
-   brew install gh dialog jq
-   ```
+2. Ensure you have the required dependencies installed.
 
 3. Make the script executable:
-   ```zsh
+   ```bash
    chmod +x github_repo_manager.sh
    ```
 
 ## Usage
 
 Run the script:
-```zsh
+```bash
 ./github_repo_manager.sh
 ```
 
@@ -61,8 +46,8 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## Contributing
 
-As this project is primarily developed for personal use on macOS with Zsh, contributions may be limited. However, if you have suggestions or improvements, feel free to open an issue or submit a pull request.
+As this project is primarily developed for personal use, contributions may be limited. However, if you have suggestions or improvements, feel free to open an issue or submit a pull request.
 
 ## Disclaimer
 
-This tool is designed for use on macOS with Zsh and may not function correctly on other operating systems or shells. Use at your own risk.
+This tool is designed for use on macOS and may not function correctly on other operating systems. Use at your own risk.
