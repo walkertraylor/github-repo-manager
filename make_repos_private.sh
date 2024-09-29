@@ -85,7 +85,8 @@ change_repo_visibility() {
     echo "$(date): Checking current visibility of $repo" >> "$LOG_FILE"
     echo "Running command: gh repo view \"$repo\" --json visibility --jq '.visibility'" >> "$LOG_FILE"
     
-    local current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility' 2>&1)
+    local current_visibility
+    current_visibility=$(timeout 10s gh repo view "$repo" --json visibility --jq '.visibility' 2>&1)
     local view_exit_code=$?
     
     echo "$(date): gh view command exit code: $view_exit_code" >> "$LOG_FILE"
@@ -102,7 +103,7 @@ change_repo_visibility() {
             echo "$(date): Attempting to change visibility of $repo to private" >> "$LOG_FILE"
             echo "Running command: gh repo edit \"$repo\" --visibility private" >> "$LOG_FILE"
 
-            output=$(gh repo edit "$repo" --visibility private 2>&1)
+            output=$(timeout 10s gh repo edit "$repo" --visibility private 2>&1)
             local edit_exit_code=$?
 
             echo "$(date): gh edit command exit code: $edit_exit_code" >> "$LOG_FILE"
@@ -125,6 +126,10 @@ change_repo_visibility() {
             echo "$(date): Unexpected visibility status for $repo: $current_visibility" >> "$LOG_FILE"
             return 1
         fi
+    elif [ $view_exit_code -eq 124 ]; then
+        echo -e "${RED}❌ Timeout occurred while getting visibility status for ${CYAN}$repo${NC}"
+        echo "$(date): Timeout occurred while getting visibility status for $repo" >> "$LOG_FILE"
+        return 1
     else
         echo -e "${RED}❌ Failed to get visibility status for ${CYAN}$repo${NC}"
         echo "$(date): Failed to get visibility status for $repo. Exit code: $view_exit_code" >> "$LOG_FILE"
