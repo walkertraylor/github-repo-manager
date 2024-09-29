@@ -76,7 +76,7 @@ change_repo_visibility() {
     local repo="$1"
     local visibility="$2"
     local output
-    output=$(timeout 30s gh repo edit "$repo" --visibility "$visibility" 2>&1)
+    output=$(timeout 60s gh repo edit "$repo" --visibility "$visibility" 2>&1)
     local exit_code=$?
     if [ $exit_code -eq 0 ]; then
         echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}$visibility${NC}"
@@ -85,8 +85,16 @@ change_repo_visibility() {
         echo "$visibility"
         return 0
     elif [ $exit_code -eq 124 ]; then
-        echo -e "${RED}❌ Command timed out while changing ${CYAN}$repo${RED} to ${MAGENTA}$visibility${NC}"
-        return 3
+        echo -e "${YELLOW}⚠️ Command timed out while changing ${CYAN}$repo${YELLOW} to ${MAGENTA}$visibility${NC}"
+        echo -e "${YELLOW}Checking current visibility...${NC}"
+        local current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility')
+        if [ "$current_visibility" = "$visibility" ]; then
+            echo -e "${GREEN}✅ Repository ${CYAN}$repo${GREEN} is now ${MAGENTA}$visibility${NC}"
+            return 0
+        else
+            echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}$visibility${NC}"
+            return 3
+        fi
     else
         if echo "$output" | grep -q "API rate limit exceeded"; then
             echo -e "${RED}❌ GitHub API rate limit exceeded. Please try again later.${NC}"
