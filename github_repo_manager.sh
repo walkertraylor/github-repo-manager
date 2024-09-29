@@ -1,12 +1,15 @@
 #!/bin/bash
 
+# GitHub Repository Manager
+# Version 1.0
+
 # Set up logging
 LOG_FILE="github_repo_manager.log"
 log() {
     echo "$(date): $1" >> "$LOG_FILE"
 }
 
-log "Script started"
+log "Script started (Version 1.0)"
 
 # Dialog color settings
 export DIALOGRC="/tmp/dialogrc"
@@ -79,7 +82,7 @@ toggle_repo_visibility() {
 
     log "Checking current visibility of $repo"
 
-    # Get current visibility
+    # Get current visibility using GitHub CLI
     current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility' 2>&1)
     if [ $? -ne 0 ]; then
         log "Failed to get visibility status for $repo. Error: $current_visibility"
@@ -90,14 +93,14 @@ toggle_repo_visibility() {
     current_visibility=$(echo "$current_visibility" | tr '[:upper:]' '[:lower:]')
     log "Current visibility of $repo: $current_visibility"
 
-    # Determine new visibility
+    # Determine new visibility (toggle between public and private)
     if [ "$current_visibility" = "public" ]; then
         new_visibility="private"
     else
         new_visibility="public"
     fi
 
-    # Change visibility
+    # Attempt to change visibility using GitHub CLI
     log "Changing visibility of $repo from $current_visibility to $new_visibility"
     output=$(gh repo edit "$repo" --visibility "$new_visibility" 2>&1)
     if [ $? -eq 0 ]; then
@@ -107,6 +110,7 @@ toggle_repo_visibility() {
     else
         log "Failed to change $repo from $current_visibility to $new_visibility. Error: $output"
         
+        # Handle specific error cases
         if echo "$output" | grep -q "API rate limit exceeded"; then
             dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
         elif echo "$output" | grep -q "Could not resolve to a Repository"; then
@@ -145,6 +149,7 @@ CACHED_REPOS=""
 
 # Function to get all repositories
 get_all_repositories() {
+    # If the cache is empty, fetch repositories from GitHub CLI
     if [ -z "$CACHED_REPOS" ]; then
         CACHED_REPOS=$(gh repo list --json nameWithOwner,visibility,isArchived --limit 1000 --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"')
     fi
@@ -400,14 +405,17 @@ Open Pull Requests: $prs"
 # Function to display the main menu
 show_main_menu() {
     local refresh_cache=$1
+    # Refresh the cache if needed
     if [ "$refresh_cache" = "true" ] || [ -z "$CACHED_REPOS" ]; then
         CACHED_REPOS=""
         get_all_repositories >/dev/null
     fi
 
+    # Fetch user information from GitHub API
     local user_info=$(gh api user --jq '{login: .login, name: .name, public_repos: .public_repos}')
     log "API response: $user_info"
     
+    # Parse user information
     local username=$(echo "$user_info" | jq -r '.login')
     local name=$(echo "$user_info" | jq -r '.name')
     local public_repos=$(echo "$user_info" | jq -r '.public_repos')
@@ -416,6 +424,7 @@ show_main_menu() {
     
     log "Parsed values: username=$username, name=$name, public_repos=$public_repos, private_repos=$private_repos, total_repos=$total_repos"
     
+    # Display the main menu using dialog
     dialog --clear --title "GitHub Repository Manager" \
            --no-cancel \
            --menu "User: $username ($name)\nPublic Repos: $public_repos | Private Repos: $private_repos\n\nChoose an operation:" 22 70 9 \
