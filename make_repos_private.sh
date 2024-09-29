@@ -92,6 +92,7 @@ change_repo_visibility() {
     echo "$(date): Current visibility: $current_visibility" >> "$LOG_FILE"
 
     if [ $view_exit_code -eq 0 ]; then
+        current_visibility=$(echo "$current_visibility" | tr '[:upper:]' '[:lower:]')
         if [ "$current_visibility" = "private" ]; then
             echo -e "${GREEN}✅ Repository ${CYAN}$repo${GREEN} is already ${MAGENTA}private${NC}"
             echo "$(date): Repository $repo is already private" >> "$LOG_FILE"
