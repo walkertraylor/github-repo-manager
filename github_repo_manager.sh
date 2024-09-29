@@ -326,17 +326,64 @@ search_repos() {
     show_repo_selection_menu "$repos"
 }
 
+# Function to display detailed repository information
+show_repo_details() {
+    local repo="$1"
+    local repo_info=$(gh repo view "$repo" --json name,description,url,homepage,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,language,licenseInfo,stargazerCount,forkCount,issueCount,pullRequestCount)
+    
+    local name=$(echo "$repo_info" | jq -r '.name')
+    local description=$(echo "$repo_info" | jq -r '.description // "N/A"')
+    local url=$(echo "$repo_info" | jq -r '.url')
+    local homepage=$(echo "$repo_info" | jq -r '.homepage // "N/A"')
+    local default_branch=$(echo "$repo_info" | jq -r '.defaultBranchRef.name')
+    local visibility=$(echo "$repo_info" | jq -r 'if .isPrivate then "Private" else "Public" end')
+    local archived=$(echo "$repo_info" | jq -r 'if .isArchived then "Yes" else "No" end')
+    local created_at=$(echo "$repo_info" | jq -r '.createdAt' | cut -d'T' -f1)
+    local updated_at=$(echo "$repo_info" | jq -r '.updatedAt' | cut -d'T' -f1)
+    local pushed_at=$(echo "$repo_info" | jq -r '.pushedAt' | cut -d'T' -f1)
+    local disk_usage=$(echo "$repo_info" | jq -r '.diskUsage')
+    local language=$(echo "$repo_info" | jq -r '.language // "N/A"')
+    local license=$(echo "$repo_info" | jq -r '.licenseInfo.name // "N/A"')
+    local stars=$(echo "$repo_info" | jq -r '.stargazerCount')
+    local forks=$(echo "$repo_info" | jq -r '.forkCount')
+    local issues=$(echo "$repo_info" | jq -r '.issueCount')
+    local prs=$(echo "$repo_info" | jq -r '.pullRequestCount')
+
+    dialog --title "Repository Details: $repo" --msgbox "\
+Name: $name
+Description: $description
+URL: $url
+Homepage: $homepage
+Default Branch: $default_branch
+Visibility: $visibility
+Archived: $archived
+Created: $created_at
+Last Updated: $updated_at
+Last Pushed: $pushed_at
+Disk Usage: $disk_usage KB
+Primary Language: $language
+License: $license
+Stars: $stars
+Forks: $forks
+Open Issues: $issues
+Open Pull Requests: $prs" 22 76
+}
+
 # Function to display the main menu
 show_main_menu() {
+    local user_info=$(gh api user --jq '[.login, .name, .public_repos, .owned_private_repos] | @tsv')
+    IFS=$'\t' read -r username name public_repos private_repos <<< "$user_info"
+    
     dialog --clear --title "GitHub Repository Manager" \
            --no-cancel \
-           --menu "Choose an operation:" 20 70 8 \
+           --menu "User: $username ($name)\nPublic Repos: $public_repos | Private Repos: $private_repos\n\nChoose an operation:" 22 70 9 \
            1 "List all repositories" \
            2 "Toggle visibility for selected repositories" \
            3 "Save current repository status" \
            4 "Load and apply repository status" \
            5 "Search repositories" \
-           6 "Exit" 2>&1 >/dev/tty
+           6 "Show detailed repository information" \
+           7 "Exit" 2>&1 >/dev/tty
 }
 
 # Main script
@@ -368,6 +415,16 @@ while true; do
             search_repos
             ;;
         6)
+            all_repos=$(get_all_repositories)
+            if check_empty_repo_list "$all_repos"; then
+                repo=$(dialog --menu "Select a repository:" 22 76 16 $(echo "$all_repos" | awk -F'|' '{print NR " " $1}') 2>&1 >/dev/tty)
+                if [ -n "$repo" ]; then
+                    selected_repo=$(echo "$all_repos" | sed -n "${repo}p" | cut -d'|' -f1)
+                    show_repo_details "$selected_repo"
+                fi
+            fi
+            ;;
+        7)
             clear
             echo -e "${BRIGHT_GREEN}Exiting...${NC}"
             exit 0
