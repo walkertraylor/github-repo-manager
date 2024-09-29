@@ -555,10 +555,20 @@ show_repo_details() {
     
     local commit_count="N/A"
     local committer_count="N/A"
-    if [ $? -eq 0 ]; then
-        commit_count=$(gh api "repos/$repo/commits?per_page=1" --jq '.[] | .commit.tree.sha' 2>/dev/null | xargs -I {} gh api "repos/$repo/commits?sha={}&per_page=1" --jq 'total_count' 2>/dev/null || echo "N/A")
-        committer_count=$(gh api "repos/$repo/contributors?per_page=100" --jq 'length' 2>/dev/null || echo "N/A")
+    
+    # Fetch commit count using GitHub API
+    commit_count=$(gh api "repos/$repo/commits?per_page=1" --jq '.[] | .commit.tree.sha' 2>/dev/null | xargs -I {} gh api "repos/$repo/commits?sha={}&per_page=1" --jq 'total_count' 2>/dev/null)
+    if [ -z "$commit_count" ] || [ "$commit_count" = "null" ]; then
+        commit_count=$(gh api "repos/$repo/commits?per_page=1" --jq 'length' 2>/dev/null)
+        if [ "$commit_count" = "1" ]; then
+            commit_count=$(gh api "repos/$repo/commits" --paginate --jq 'length' 2>/dev/null | awk '{sum+=$1} END {print sum}')
+        fi
     fi
+    commit_count=${commit_count:-"N/A"}
+
+    # Fetch committer count
+    committer_count=$(gh api "repos/$repo/contributors?per_page=100" --jq 'length' 2>/dev/null || echo "N/A")
+    
     log "Fetched commit count: $commit_count, committer count: $committer_count"
 
     local details="
