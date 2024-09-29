@@ -140,9 +140,15 @@ check_empty_repo_list() {
     return 0
 }
 
+# Global variable to store cached repository list
+CACHED_REPOS=""
+
 # Function to get all repositories
 get_all_repositories() {
-    gh repo list --json nameWithOwner,visibility,isArchived --limit 1000 --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"'
+    if [ -z "$CACHED_REPOS" ]; then
+        CACHED_REPOS=$(gh repo list --json nameWithOwner,visibility,isArchived --limit 1000 --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"')
+    fi
+    echo "$CACHED_REPOS"
 }
 
 # Function to display repository selection menu
@@ -370,13 +376,19 @@ Open Pull Requests: $prs" 22 76
 
 # Function to display the main menu
 show_main_menu() {
+    local refresh_cache=$1
+    if [ "$refresh_cache" = "true" ] || [ -z "$CACHED_REPOS" ]; then
+        CACHED_REPOS=""
+        get_all_repositories >/dev/null
+    fi
+
     local user_info=$(gh api user --jq '{login: .login, name: .name, public_repos: .public_repos}')
     log "API response: $user_info"
     
     local username=$(echo "$user_info" | jq -r '.login')
     local name=$(echo "$user_info" | jq -r '.name')
     local public_repos=$(echo "$user_info" | jq -r '.public_repos')
-    local total_repos=$(gh repo list --json name --jq 'length')
+    local total_repos=$(echo "$CACHED_REPOS" | wc -l)
     local private_repos=$((total_repos - public_repos))
     
     log "Parsed values: username=$username, name=$name, public_repos=$public_repos, private_repos=$private_repos, total_repos=$total_repos"
@@ -390,14 +402,17 @@ show_main_menu() {
            4 "Load and apply repository status" \
            5 "Search repositories" \
            6 "Show detailed repository information" \
-           7 "Exit" 2>&1 >/dev/tty
+           7 "Refresh repository cache" \
+           8 "Exit" 2>&1 >/dev/tty
 }
 
 # Main script
 echo "GitHub Repository Visibility Manager"
 
+refresh_cache=false
 while true; do
-    choice=$(show_main_menu)
+    choice=$(show_main_menu "$refresh_cache")
+    refresh_cache=false
     case $choice in
         1)
             all_repos=$(get_all_repositories)
@@ -409,7 +424,10 @@ while true; do
             all_repos=$(get_all_repositories)
             if check_empty_repo_list "$all_repos"; then
                 selected_repos=$(show_repo_selection_menu "$all_repos")
-                process_selected_repos "$selected_repos" "$all_repos"
+                if [ "$selected_repos" != "BACK" ]; then
+                    process_selected_repos "$selected_repos" "$all_repos"
+                    refresh_cache=true
+                fi
             fi
             ;;
         3)
@@ -417,6 +435,7 @@ while true; do
             ;;
         4)
             load_and_apply_repo_status
+            refresh_cache=true
             ;;
         5)
             search_repos
@@ -432,6 +451,9 @@ while true; do
             fi
             ;;
         7)
+            refresh_cache=true
+            ;;
+        8)
             clear
             echo -e "${BRIGHT_GREEN}Exiting...${NC}"
             exit 0
