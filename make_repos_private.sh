@@ -202,12 +202,12 @@ list_repositories() {
     
     local formatted_list=""
     while IFS='|' read -r repo visibility archived; do
-        archived_status=$([ "$archived" = "true" ] && echo "Archived" || echo "Not Archived")
-        formatted_list+="• $repo (Visibility: $visibility, Status: $archived_status)\n"
+        archived_status=$([ "$archived" = "true" ] && echo "[Archived]" || echo "")
+        formatted_list+="• $repo (Visibility: $visibility)$archived_status\n"
         echo "$(date): $repo | $visibility | $archived_status" >> "$LOG_FILE"
     done <<< "$repo_list"
     
-    dialog --title "Repository List" --msgbox "Repositories, their visibility, and archive status:\n\n$formatted_list" 24 80
+    dialog --title "Repository List" --msgbox "Repositories and their visibility:\n\n$formatted_list" 24 80
 }
 
 # Function to save repository status
