@@ -81,7 +81,7 @@ show_repo_selection_menu() {
 
     dialog --clear --title "Select Repositories to Toggle Visibility" \
            --checklist "Choose repositories:" 20 70 15 \
-           "${menu_items[@]}" 2>&1 >/dev/tty
+           "${menu_items[@]}" 2>&1 >/dev/tty || true
 }
 
 # Function to toggle repository visibility
@@ -114,13 +114,14 @@ save_repo_status() {
     local default_file="repo_status_$(date +%Y%m%d_%H%M%S).csv"
     local output_file=$(dialog --title "Save Repository Status" --inputbox "Enter filename to save status (default: $default_file):" 10 60 "$default_file" 2>&1 >/dev/tty)
     
-    if [ $? -ne 0 ]; then
+    if [ $? -ne 0 ] || [ -z "$output_file" ]; then
+        dialog --msgbox "Operation cancelled or empty filename provided." 8 60
         return
     fi
 
     # Validate filename
-    if [[ ! $output_file =~ ^[a-zA-Z0-9_.-]+$ ]]; then
-        dialog --msgbox "Invalid filename. Please use only letters, numbers, underscores, hyphens, and periods." 8 60
+    if [[ ! $output_file =~ ^[a-zA-Z0-9_.-]+\.csv$ ]]; then
+        dialog --msgbox "Invalid filename. Please use only letters, numbers, underscores, hyphens, and periods, and end with .csv" 8 60
         return
     fi
 
@@ -138,8 +139,13 @@ load_and_apply_repo_status() {
     local default_file=$(ls -t repo_status_*.csv 2>/dev/null | head -n1)
     local input_file=$(dialog --title "Load Repository Status" --inputbox "Enter filename to load status (default: $default_file):" 10 60 "$default_file" 2>&1 >/dev/tty)
     
-    if [ $? -ne 0 ] || [ ! -f "$input_file" ]; then
-        dialog --msgbox "Invalid file or operation cancelled." 8 40
+    if [ $? -ne 0 ] || [ -z "$input_file" ]; then
+        dialog --msgbox "Operation cancelled or empty filename provided." 8 60
+        return
+    fi
+
+    if [ ! -f "$input_file" ]; then
+        dialog --msgbox "File not found: $input_file" 8 40
         return
     fi
 
