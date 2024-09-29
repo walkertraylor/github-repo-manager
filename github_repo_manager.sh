@@ -377,8 +377,8 @@ show_main_menu() {
     local username=$(echo "$user_info" | jq -r '.login')
     local name=$(echo "$user_info" | jq -r '.name')
     local public_repos=$(echo "$user_info" | jq -r '.public_repos')
-    local private_repos=$(gh repo list --json visibility --jq 'map(select(.visibility == "private")) | length')
     local total_repos=$(gh repo list --json name --jq 'length')
+    local private_repos=$((total_repos - public_repos))
     
     log "Parsed values: username=$username, name=$name, public_repos=$public_repos, private_repos=$private_repos, total_repos=$total_repos"
     
