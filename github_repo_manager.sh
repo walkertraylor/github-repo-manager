@@ -505,15 +505,16 @@ show_main_menu() {
     # Display the main menu using dialog
     dialog --clear --title "GitHub Repository Manager" \
            --no-cancel \
-           --menu "User: $username ($name)\nPublic Repos: $public_repos | Private Repos: $private_repos\n\nChoose an operation:" 22 70 9 \
+           --menu "User: $username ($name)\nPublic Repos: $public_repos | Private Repos: $private_repos\n\nChoose an operation:" 23 70 10 \
            1 "List all repositories" \
            2 "Toggle visibility for selected repositories" \
-           3 "Save current repository status" \
-           4 "Load and apply repository status" \
-           5 "Search repositories" \
-           6 "Show detailed repository information" \
-           7 "Refresh repository cache" \
-           8 "Exit" 2>&1 >/dev/tty
+           3 "Toggle archive status for selected repositories" \
+           4 "Save current repository status" \
+           5 "Load and apply repository status" \
+           6 "Search repositories" \
+           7 "Show detailed repository information" \
+           8 "Refresh repository cache" \
+           9 "Exit" 2>&1 >/dev/tty
 }
 
 # Main script
@@ -541,16 +542,26 @@ while true; do
             fi
             ;;
         3)
-            save_repo_status
+            all_repos=$(get_all_repositories)
+            if check_empty_repo_list "$all_repos"; then
+                selected_repos=$(show_repo_selection_menu "$all_repos")
+                if [ "$selected_repos" != "BACK" ]; then
+                    process_selected_repos_archive "$selected_repos" "$all_repos"
+                    refresh_cache=true
+                fi
+            fi
             ;;
         4)
+            save_repo_status
+            ;;
+        5)
             load_and_apply_repo_status
             refresh_cache=true
             ;;
-        5)
+        6)
             search_repos
             ;;
-        6)
+        7)
             all_repos=$(get_all_repositories)
             if check_empty_repo_list "$all_repos"; then
                 repo=$(dialog --menu "Select a repository:" 22 76 16 $(echo "$all_repos" | awk -F'|' '{print NR " " $1}') 2>&1 >/dev/tty)
@@ -560,10 +571,10 @@ while true; do
                 fi
             fi
             ;;
-        7)
+        8)
             refresh_cache=true
             ;;
-        8)
+        9)
             clear
             echo -e "${BRIGHT_GREEN}Exiting...${NC}"
             exit 0
