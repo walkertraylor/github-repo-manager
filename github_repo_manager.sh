@@ -175,7 +175,7 @@ toggle_repo_archive_status() {
 
     # Attempt to change archive status using GitHub CLI
     log "Attempting to change archive status of $repo from $current_status to $new_status"
-    output=$(gh repo $archive_action "$repo" 2>&1)
+    output=$(gh repo $archive_action "$repo" --yes 2>&1)
     local gh_result=$?
     log "GitHub CLI command result: $gh_result"
     log "GitHub CLI output: $output"
