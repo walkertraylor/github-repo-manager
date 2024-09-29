@@ -2,7 +2,7 @@
 
 # Set up logging
 LOG_FILE="repo_visibility_changer.log"
-exec > >(tee -a "$LOG_FILE") 2>&1
+exec >> "$LOG_FILE" 2>&1
 
 echo "Script started at $(date)"
 
@@ -89,8 +89,8 @@ toggle_repo_visibility() {
     # Get current visibility
     current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility' 2>&1)
     if [ $? -ne 0 ]; then
-        echo -e "${RED}❌ Failed to get visibility status for ${CYAN}$repo${NC}"
         echo "$(date): Failed to get visibility status for $repo. Error: $current_visibility" >> "$LOG_FILE"
+        dialog --title "Error" --msgbox "Failed to get visibility status for $repo." 8 60
         return 1
     fi
 
@@ -108,22 +108,18 @@ toggle_repo_visibility() {
     echo "$(date): Changing visibility of $repo from $current_visibility to $new_visibility" >> "$LOG_FILE"
     output=$(gh repo edit "$repo" --visibility "$new_visibility" 2>&1)
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} from ${MAGENTA}$current_visibility${GREEN} to ${MAGENTA}$new_visibility${NC}"
         echo "$(date): Successfully changed $repo from $current_visibility to $new_visibility" >> "$LOG_FILE"
+        dialog --title "Success" --msgbox "Changed $repo from $current_visibility to $new_visibility" 8 60
         return 0
     else
-        echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} from ${MAGENTA}$current_visibility${RED} to ${MAGENTA}$new_visibility${NC}"
         echo "$(date): Failed to change $repo from $current_visibility to $new_visibility. Error: $output" >> "$LOG_FILE"
         
         if echo "$output" | grep -q "API rate limit exceeded"; then
-            echo -e "${RED}❌ GitHub API rate limit exceeded. Please try again later.${NC}"
-            echo "$(date): GitHub API rate limit exceeded" >> "$LOG_FILE"
+            dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
         elif echo "$output" | grep -q "Could not resolve to a Repository"; then
-            echo -e "${RED}❌ Repository ${CYAN}$repo${RED} not found or you don't have permission to modify it.${NC}"
-            echo "$(date): Repository $repo not found or permission denied" >> "$LOG_FILE"
+            dialog --title "Error" --msgbox "Repository $repo not found or you don't have permission to modify it." 8 60
         else
-            echo -e "${RED}❌ Error: $output${NC}"
-            echo "$(date): Error: $output" >> "$LOG_FILE"
+            dialog --title "Error" --msgbox "Failed to change $repo visibility. Error: $output" 10 60
         fi
         return 1
     fi
@@ -193,8 +189,9 @@ process_selected_repos() {
 
 # Function to list all repositories
 list_repositories() {
-    echo -e "${YELLOW}Listing all repositories:${NC}"
-    gh repo list --json nameWithOwner,visibility --jq '.[] | "${BLUE}\(.nameWithOwner)${NC} - ${CYAN}\(.visibility)${NC}"'
+    echo "$(date): Listing all repositories" >> "$LOG_FILE"
+    local repo_list=$(gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner) - \(.visibility)"')
+    dialog --title "Repository List" --msgbox "$repo_list" 20 80
 }
 
 # Function to save repository status
@@ -216,12 +213,13 @@ save_repo_status() {
     # Ensure the directory exists
     mkdir -p "$(dirname "$output_file")"
 
-    echo -e "${YELLOW}Saving repository status to ${CYAN}$output_file${NC}"
+    echo "$(date): Saving repository status to $output_file" >> "$LOG_FILE"
     if ! gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner),\(.visibility)"' > "$output_file"; then
+        echo "$(date): Failed to save repository status to $output_file" >> "$LOG_FILE"
         dialog --msgbox "Failed to save repository status. Please check your GitHub authentication and try again." 8 60
         return
     fi
-    echo -e "${GREEN}✅ Saved repository status to ${CYAN}$output_file${NC}"
+    echo "$(date): Successfully saved repository status to $output_file" >> "$LOG_FILE"
     dialog --msgbox "Repository status saved to $output_file" 8 60
 }
 
