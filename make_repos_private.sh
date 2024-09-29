@@ -30,10 +30,49 @@ change_repo_visibility() {
     local visibility="$2"
     if gh repo edit "$repo" --visibility "$visibility" 2>/dev/null; then
         echo -e "${GREEN}✅ Changed $repo to $visibility${NC}"
-        ((success_count++))
+        return 0
     else
         echo -e "${RED}❌ Failed to change $repo to $visibility${NC}"
-        failed_repos+=("$repo")
+        return 1
+    fi
+}
+
+# Function to get all repositories
+get_all_repositories() {
+    gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner)|\(.visibility)"'
+}
+
+# Function to display repository selection menu
+show_repo_selection_menu() {
+    local repos="$1"
+    local menu_items=()
+    local i=1
+    while IFS='|' read -r repo visibility; do
+        menu_items+=("$i" "$repo ($visibility)")
+        ((i++))
+    done <<< "$repos"
+
+    dialog --clear --title "Select Repositories to Toggle Visibility" \
+           --checklist "Choose repositories:" 20 70 15 \
+           "${menu_items[@]}" 2>&1 >/dev/tty
+}
+
+# Function to toggle repository visibility
+toggle_repo_visibility() {
+    local repo="$1"
+    local current_visibility="$2"
+    local new_visibility
+
+    if [ "$current_visibility" = "public" ]; then
+        new_visibility="private"
+    else
+        new_visibility="public"
+    fi
+
+    if change_repo_visibility "$repo" "$new_visibility"; then
+        dialog --msgbox "Successfully changed $repo to $new_visibility" 8 60
+    else
+        dialog --msgbox "Failed to change $repo to $new_visibility" 8 60
     fi
 }
 
@@ -76,100 +115,17 @@ show_main_menu() {
 # Main script
 echo "GitHub Repository Visibility Manager"
 
-# Get total number of repositories
-total_repos=$(gh repo list --limit 1000 | wc -l)
-echo "Total number of repositories: $total_repos"
+# Get all repositories
+all_repos=$(get_all_repositories)
 
-# Menu
-while true; do
-    choice=$(show_main_menu)
-    case $choice in
-        1)
-            target_visibility="private"
-            source_visibility="public"
-            break
-            ;;
-        2)
-            target_visibility="public"
-            source_visibility="private"
-            break
-            ;;
-        3)
-            list_repositories
-            echo "Press Enter to continue..."
-            read
-            continue
-            ;;
-        4)
-            backup_visibility_status
-            echo "Press Enter to continue..."
-            read
-            continue
-            ;;
-        5)
-            clear
-            echo "Exiting."
-            exit 0
-            ;;
-        *)
-            dialog --msgbox "Invalid choice. Please try again." 8 40
-            continue
-            ;;
-    esac
+# Show repository selection menu
+selected_repos=$(show_repo_selection_menu "$all_repos")
+
+# Toggle visibility for selected repositories
+for selection in $selected_repos; do
+    repo_info=$(echo "$all_repos" | sed -n "${selection}p")
+    IFS='|' read -r repo visibility <<< "$repo_info"
+    toggle_repo_visibility "$repo" "$visibility"
 done
 
-echo "This action will change all $source_visibility repositories to $target_visibility."
-echo "This action cannot be undone easily. Are you sure you want to proceed? (y/n)"
-read -r confirm
-
-if [[ ! $confirm =~ ^[Yy]$ ]]; then
-    echo "Operation cancelled."
-    exit 0
-fi
-
-echo "Changing $source_visibility repositories to $target_visibility..."
-echo "This may take a while depending on the number of repositories."
-
-# Backup current visibility status
-backup_visibility_status
-
-# Get list of repositories to change
-repos_to_change=$(gh repo list --json nameWithOwner,visibility --jq ".[] | select(.visibility == \"$source_visibility\") | .nameWithOwner")
-
-# Debug output
-echo "Debug: Repositories to change:"
-echo "$repos_to_change"
-echo "Debug: End of repositories list"
-
-# Check if there are any repos to change
-if [ -z "$repos_to_change" ]; then
-    echo "No $source_visibility repositories found. No changes were made."
-    exit 0
-fi
-
-# Count of repositories
-total_to_change=$(echo "$repos_to_change" | wc -l)
-current=0
-success_count=0
-failed_repos=()
-
-# Loop through repositories and change visibility
-echo "$repos_to_change" | while IFS= read -r repo; do
-    ((current++))
-    percentage=$((current * 100 / total_to_change))
-    echo -ne "[$percentage%] Processing $repo\r"
-    change_repo_visibility "$repo" "$target_visibility"
-done
-
-echo -e "\nFinished processing all repositories."
-echo "Summary:"
-echo "- Total repositories processed: $total_to_change"
-echo "- Successfully changed to $target_visibility: $success_count"
-echo "- Failed to change: ${#failed_repos[@]}"
-
-if [ ${#failed_repos[@]} -gt 0 ]; then
-    echo "Repositories that failed to change:"
-    printf '%s\n' "${failed_repos[@]}"
-fi
-
-echo -e "\nA backup of the original visibility status has been created."
+dialog --msgbox "Operation completed." 8 40
