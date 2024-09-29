@@ -337,7 +337,8 @@ show_repo_details() {
     local repo_info
     local error_message
 
-    repo_info=$(gh repo view "$repo" --json name,description,url,homepage,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,languages,licenseInfo,stargazerCount,forkCount,openIssues,pullRequests 2>&1)
+    log "Fetching repository information for $repo"
+    repo_info=$(gh repo view "$repo" --json name,description,url,homepageUrl,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,languages,licenseInfo,stargazerCount,forkCount,issues,pullRequests 2>&1)
     if [ $? -ne 0 ]; then
         error_message="Failed to fetch repository information for $repo. Error: $repo_info"
         log "$error_message"
@@ -350,12 +351,15 @@ show_repo_details() {
         log "$error_message"
         dialog --title "Error" --msgbox "$error_message" 8 60
         return
-    fi
+    }
+
+    log "Successfully fetched repository information for $repo"
+    log "Raw repository info: $repo_info"
 
     local name=$(echo "$repo_info" | jq -r '.name // "N/A"')
     local description=$(echo "$repo_info" | jq -r '.description // "N/A"')
     local url=$(echo "$repo_info" | jq -r '.url // "N/A"')
-    local homepage=$(echo "$repo_info" | jq -r '.homepage // "N/A"')
+    local homepage=$(echo "$repo_info" | jq -r '.homepageUrl // "N/A"')
     local default_branch=$(echo "$repo_info" | jq -r '.defaultBranchRef.name // "N/A"')
     local visibility=$(echo "$repo_info" | jq -r 'if .isPrivate then "Private" else "Public" end')
     local archived=$(echo "$repo_info" | jq -r 'if .isArchived then "Yes" else "No" end')
@@ -367,7 +371,7 @@ show_repo_details() {
     local license=$(echo "$repo_info" | jq -r '.licenseInfo.name // "N/A"')
     local stars=$(echo "$repo_info" | jq -r '.stargazerCount // "N/A"')
     local forks=$(echo "$repo_info" | jq -r '.forkCount // "N/A"')
-    local issues=$(echo "$repo_info" | jq -r '.openIssues.totalCount // "N/A"')
+    local issues=$(echo "$repo_info" | jq -r '.issues.totalCount // "N/A"')
     local prs=$(echo "$repo_info" | jq -r '.pullRequests.totalCount // "N/A"')
 
     local details="
@@ -389,7 +393,7 @@ Forks: $forks
 Open Issues: $issues
 Open Pull Requests: $prs"
 
-    log "Repository details for $repo: $details"
+    log "Formatted repository details for $repo: $details"
     dialog --title "Repository Details: $repo" --msgbox "$details" 22 76
 }
 
