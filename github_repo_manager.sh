@@ -135,8 +135,9 @@ toggle_repo_archive_status() {
     local new_status
     local output
 
-    log "Checking current archive status of $repo"
+    log "Starting toggle_repo_archive_status for $repo"
 
+    log "Checking current archive status of $repo"
     # Get current archive status using GitHub CLI
     current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>&1)
     if [ $? -ne 0 ]; then
@@ -153,10 +154,13 @@ toggle_repo_archive_status() {
     else
         new_status="archived"
     fi
+    log "New status will be: $new_status"
 
     # Confirmation dialog
+    log "Showing confirmation dialog"
     dialog --title "Confirm Archive Status Change" --yesno "Are you sure you want to change $repo to $new_status?" 8 60
     local dialog_result=$?
+    log "Dialog result: $dialog_result"
     if [ $dialog_result -ne 0 ]; then
         log "User cancelled archive status change for $repo"
         return 2
@@ -165,7 +169,11 @@ toggle_repo_archive_status() {
     # Attempt to change archive status using GitHub CLI
     log "Attempting to change archive status of $repo from $current_status to $new_status"
     output=$(gh repo edit "$repo" --"$new_status" 2>&1)
-    if [ $? -eq 0 ]; then
+    local gh_result=$?
+    log "GitHub CLI command result: $gh_result"
+    log "GitHub CLI output: $output"
+    
+    if [ $gh_result -eq 0 ]; then
         log "Successfully changed $repo to $new_status"
         dialog --title "Success" --msgbox "Changed $repo to $new_status" 8 60
         return 0
