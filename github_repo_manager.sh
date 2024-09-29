@@ -172,7 +172,7 @@ toggle_repo_archive_status() {
     # Attempt to change archive status using GitHub CLI
     log "Attempting to change archive status of $repo from $current_status to $new_status"
     if [ "$new_status" = "archived" ]; then
-        output=$(gh repo edit "$repo" --archived 2>&1)
+        output=$(gh repo edit "$repo" --archived=true 2>&1)
     else
         output=$(gh repo edit "$repo" --archived=false 2>&1)
     fi
