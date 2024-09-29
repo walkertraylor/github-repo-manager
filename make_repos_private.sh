@@ -31,6 +31,9 @@ if ! command -v gh &> /dev/null; then
     exit 1
 fi
 
+# Set PAGER to 'cat' to prevent pagination
+export PAGER=cat
+
 # Main script
 echo "GitHub Repository Visibility Manager"
 
