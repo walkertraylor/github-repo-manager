@@ -371,7 +371,7 @@ Open Pull Requests: $prs" 22 76
 
 # Function to display the main menu
 show_main_menu() {
-    local user_info=$(gh api user --jq '[.login, .name, .public_repos, .owned_private_repos] | @tsv')
+    local user_info=$(gh api user --jq '[.login, .name, .public_repos, .total_private_repos] | @tsv')
     IFS=$'\t' read -r username name public_repos private_repos <<< "$user_info"
     
     dialog --clear --title "GitHub Repository Manager" \
