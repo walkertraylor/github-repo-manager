@@ -174,7 +174,7 @@ toggle_repo_archive_status() {
     if [ "$new_status" = "archived" ]; then
         output=$(gh repo edit "$repo" --archived 2>&1)
     else
-        output=$(gh repo edit "$repo" --unarchived 2>&1)
+        output=$(gh repo edit "$repo" --archived=false 2>&1)
     fi
     local gh_result=$?
     log "GitHub CLI command result: $gh_result"
