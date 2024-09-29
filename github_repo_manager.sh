@@ -397,7 +397,20 @@ process_selected_repos_archive() {
 # Function to list all repositories
 list_repositories() {
     echo "$(date): Listing all repositories" >> "$LOG_FILE"
-    local repo_list=$(gh repo list --json nameWithOwner,visibility,isArchived --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"')
+    local repo_list
+    repo_list=$(gh repo list --json nameWithOwner,visibility,isArchived --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"' 2>&1)
+    
+    if [ $? -ne 0 ]; then
+        log "Error fetching repository list: $repo_list"
+        dialog --title "Error" --msgbox "Failed to fetch repository list. Error: $repo_list" $(calculate_dialog_size)
+        return 1
+    fi
+    
+    if [ -z "$repo_list" ]; then
+        log "No repositories found or empty response from GitHub CLI"
+        dialog --title "Warning" --msgbox "No repositories found or empty response from GitHub CLI. Please check your GitHub authentication and permissions." $(calculate_dialog_size)
+        return 1
+    }
     
     local formatted_list=""
     while IFS='|' read -r repo visibility archived; do
@@ -406,7 +419,7 @@ list_repositories() {
         echo "$(date): $repo | $visibility | $archived_status" >> "$LOG_FILE"
     done <<< "$repo_list"
     
-    dialog --title "Repository List" --msgbox "Repositories and their visibility:\n\n$formatted_list" 24 80
+    dialog --title "Repository List" --msgbox "Repositories and their visibility:\n\n$formatted_list" $(calculate_dialog_size)
 }
 
 # Function to save repository status
