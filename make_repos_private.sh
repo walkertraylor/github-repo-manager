@@ -122,12 +122,12 @@ show_repo_selection_menu() {
     local menu_items=()
     local i=1
     while IFS='|' read -r repo visibility; do
-        menu_items+=("$i" "$repo ($visibility)")
+        menu_items+=("$i" "$repo ($visibility)" "off")
         ((i++))
     done <<< "$repos"
 
     dialog --clear --title "Select Repositories to Toggle Visibility" \
-           --checklist "Choose repositories to change visibility:" 25 80 20 \
+           --checklist "Choose repositories to change visibility:" 25 80 15 \
            "${menu_items[@]}" 2>&1 >/dev/tty || echo ""
 }
 
