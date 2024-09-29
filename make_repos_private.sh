@@ -77,11 +77,11 @@ if ! command_exists dialog; then
     exit 1
 fi
 
-# Function to change repo visibility
-change_repo_visibility() {
+# Function to toggle repo visibility
+toggle_repo_visibility() {
     local repo="$1"
-    local target_visibility="$2"
     local current_visibility
+    local new_visibility
     local output
 
     echo "$(date): Checking current visibility of $repo" >> "$LOG_FILE"
@@ -97,23 +97,23 @@ change_repo_visibility() {
     current_visibility=$(echo "$current_visibility" | tr '[:upper:]' '[:lower:]')
     echo "$(date): Current visibility of $repo: $current_visibility" >> "$LOG_FILE"
 
-    # Check if change is needed
-    if [ "$current_visibility" = "$target_visibility" ]; then
-        echo -e "${GREEN}✅ Repository ${CYAN}$repo${GREEN} is already ${MAGENTA}$target_visibility${NC}"
-        echo "$(date): Repository $repo is already $target_visibility" >> "$LOG_FILE"
-        return 0
+    # Determine new visibility
+    if [ "$current_visibility" = "public" ]; then
+        new_visibility="private"
+    else
+        new_visibility="public"
     fi
 
     # Change visibility
-    echo "$(date): Changing visibility of $repo to $target_visibility" >> "$LOG_FILE"
-    output=$(gh repo edit "$repo" --visibility "$target_visibility" 2>&1)
+    echo "$(date): Changing visibility of $repo from $current_visibility to $new_visibility" >> "$LOG_FILE"
+    output=$(gh repo edit "$repo" --visibility "$new_visibility" 2>&1)
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}$target_visibility${NC}"
-        echo "$(date): Successfully changed $repo to $target_visibility" >> "$LOG_FILE"
+        echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} from ${MAGENTA}$current_visibility${GREEN} to ${MAGENTA}$new_visibility${NC}"
+        echo "$(date): Successfully changed $repo from $current_visibility to $new_visibility" >> "$LOG_FILE"
         return 0
     else
-        echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}$target_visibility${NC}"
-        echo "$(date): Failed to change $repo to $target_visibility. Error: $output" >> "$LOG_FILE"
+        echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} from ${MAGENTA}$current_visibility${RED} to ${MAGENTA}$new_visibility${NC}"
+        echo "$(date): Failed to change $repo from $current_visibility to $new_visibility. Error: $output" >> "$LOG_FILE"
         
         if echo "$output" | grep -q "API rate limit exceeded"; then
             echo -e "${RED}❌ GitHub API rate limit exceeded. Please try again later.${NC}"
@@ -169,23 +169,26 @@ show_repo_selection_menu() {
            "${menu_items[@]}" 2>&1 >/dev/tty || echo ""
 }
 
-# Function to toggle repository visibility
-toggle_repo_visibility() {
-    local repo="$1"
-    local current_visibility="$2"
-    local new_visibility
+# Function to process selected repositories
+process_selected_repos() {
+    local selected_repos="$1"
+    local all_repos="$2"
+    local repo
+    local visibility
 
-    if [ "$current_visibility" = "public" ]; then
-        new_visibility="private"
-    else
-        new_visibility="public"
-    fi
-
-    if change_repo_visibility "$repo" "$new_visibility"; then
-        dialog --msgbox "Successfully changed $repo from $current_visibility to $new_visibility" 8 60
-    else
-        dialog --msgbox "Failed to change $repo from $current_visibility to $new_visibility. Check the log file for details." 10 70
-    fi
+    for selection in $selected_repos; do
+        repo_info=$(echo "$all_repos" | sed -n "${selection}p")
+        IFS='|' read -r repo visibility <<< "$repo_info"
+        if validate_repo_name "$repo"; then
+            if toggle_repo_visibility "$repo"; then
+                dialog --msgbox "Successfully toggled visibility for $repo" 8 60
+            else
+                dialog --msgbox "Failed to toggle visibility for $repo. Check the log file for details." 10 70
+            fi
+        else
+            dialog --msgbox "Invalid repository name: $repo. Skipping." 8 60
+        fi
+    done
 }
 
 # Function to list all repositories
@@ -291,18 +294,11 @@ while true; do
             all_repos=$(get_all_repositories)
             if check_empty_repo_list "$all_repos"; then
                 selected_repos=$(show_repo_selection_menu "$all_repos")
-                for selection in $selected_repos; do
-                    repo_info=$(echo "$all_repos" | sed -n "${selection}p")
-                    IFS='|' read -r repo visibility <<< "$repo_info"
-                    if validate_repo_name "$repo"; then
-                        new_visibility=$(toggle_repo_visibility "$repo" "$visibility")
-                        if [ -n "$new_visibility" ]; then
-                            all_repos=$(echo "$all_repos" | sed "s|$repo|$visibility|$repo|$new_visibility|")
-                        fi
-                    else
-                        dialog --msgbox "Invalid repository name: $repo. Skipping." 8 60
-                    fi
-                done
+                if [ -n "$selected_repos" ]; then
+                    process_selected_repos "$selected_repos" "$all_repos"
+                else
+                    dialog --msgbox "No repositories selected." 8 40
+                fi
             fi
             ;;
         2)
