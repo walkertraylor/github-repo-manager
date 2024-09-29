@@ -81,6 +81,7 @@ change_repo_visibility() {
         echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}$visibility${NC}"
         # Refresh the repository list
         all_repos=$(get_all_repositories)
+        echo "$visibility"
         return 0
     else
         if echo "$output" | grep -q "API rate limit exceeded"; then
@@ -146,9 +147,9 @@ toggle_repo_visibility() {
     fi
 
     if change_repo_visibility "$repo" "$new_visibility"; then
-        dialog --msgbox "Successfully changed $repo to $new_visibility" 8 60
+        dialog --msgbox "Successfully changed $repo from $current_visibility to $new_visibility" 8 60
     else
-        dialog --msgbox "Failed to change $repo to $new_visibility" 8 60
+        dialog --msgbox "Failed to change $repo from $current_visibility to $new_visibility" 8 60
     fi
 }
 
@@ -259,7 +260,10 @@ while true; do
                     repo_info=$(echo "$all_repos" | sed -n "${selection}p")
                     IFS='|' read -r repo visibility <<< "$repo_info"
                     if validate_repo_name "$repo"; then
-                        toggle_repo_visibility "$repo" "$visibility"
+                        new_visibility=$(toggle_repo_visibility "$repo" "$visibility")
+                        if [ -n "$new_visibility" ]; then
+                            all_repos=$(echo "$all_repos" | sed "s|$repo|$visibility|$repo|$new_visibility|")
+                        fi
                     else
                         dialog --msgbox "Invalid repository name: $repo. Skipping." 8 60
                     fi
