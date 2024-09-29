@@ -13,52 +13,42 @@ export DIALOGRC="/tmp/dialogrc"
 cat > "$DIALOGRC" << EOF
 use_shadow = ON
 use_colors = ON
-screen_color = (WHITE,BLUE,ON)
-dialog_color = (BLACK,WHITE,OFF)
-title_color = (YELLOW,RED,ON)
-border_color = (WHITE,WHITE,ON)
-button_active_color = (WHITE,RED,ON)
-button_inactive_color = (BLACK,WHITE,OFF)
-button_key_active_color = (WHITE,RED,ON)
-button_key_inactive_color = (RED,WHITE,OFF)
-button_label_active_color = (YELLOW,RED,ON)
-button_label_inactive_color = (BLACK,WHITE,ON)
-inputbox_color = (BLACK,WHITE,OFF)
-inputbox_border_color = (BLACK,WHITE,OFF)
-searchbox_color = (BLACK,WHITE,OFF)
-searchbox_title_color = (YELLOW,WHITE,ON)
-searchbox_border_color = (WHITE,WHITE,ON)
-position_indicator_color = (YELLOW,WHITE,ON)
-menubox_color = (BLACK,WHITE,OFF)
-menubox_border_color = (WHITE,WHITE,ON)
-item_color = (BLACK,WHITE,OFF)
-item_selected_color = (WHITE,RED,ON)
-tag_color = (YELLOW,WHITE,ON)
-tag_selected_color = (YELLOW,RED,ON)
-tag_key_color = (YELLOW,WHITE,ON)
-tag_key_selected_color = (WHITE,RED,ON)
-check_color = (BLACK,WHITE,OFF)
-check_selected_color = (WHITE,RED,ON)
-uarrow_color = (YELLOW,WHITE,ON)
-darrow_color = (YELLOW,WHITE,ON)
-itemhelp_color = (WHITE,BLACK,OFF)
-form_active_text_color = (WHITE,BLUE,ON)
-form_text_color = (WHITE,CYAN,ON)
-form_item_readonly_color = (CYAN,WHITE,ON)
-gauge_color = (BLUE,WHITE,ON)
-border2_color = (WHITE,WHITE,ON)
-inputbox_border2_color = (BLACK,WHITE,OFF)
-searchbox_border2_color = (WHITE,WHITE,ON)
-menubox_border2_color = (WHITE,WHITE,ON)
+screen_color = (BLACK,GREEN,ON)
+dialog_color = (GREEN,BLACK,OFF)
+title_color = (GREEN,BLACK,ON)
+border_color = (GREEN,BLACK,ON)
+button_active_color = (BLACK,GREEN,ON)
+button_inactive_color = (GREEN,BLACK,OFF)
+button_key_active_color = (BLACK,GREEN,ON)
+button_key_inactive_color = (GREEN,BLACK,OFF)
+button_label_active_color = (BLACK,GREEN,ON)
+button_label_inactive_color = (GREEN,BLACK,ON)
+inputbox_color = (GREEN,BLACK,OFF)
+inputbox_border_color = (GREEN,BLACK,OFF)
+searchbox_color = (GREEN,BLACK,OFF)
+searchbox_title_color = (BLACK,GREEN,ON)
+searchbox_border_color = (GREEN,BLACK,ON)
+position_indicator_color = (GREEN,BLACK,ON)
+menubox_color = (GREEN,BLACK,OFF)
+menubox_border_color = (GREEN,BLACK,ON)
+item_color = (GREEN,BLACK,OFF)
+item_selected_color = (BLACK,GREEN,ON)
+tag_color = (GREEN,BLACK,ON)
+tag_selected_color = (BLACK,GREEN,ON)
+tag_key_color = (GREEN,BLACK,ON)
+tag_key_selected_color = (BLACK,GREEN,ON)
+check_color = (GREEN,BLACK,OFF)
+check_selected_color = (BLACK,GREEN,ON)
+uarrow_color = (GREEN,BLACK,ON)
+darrow_color = (GREEN,BLACK,ON)
 EOF
 
 # Colors for terminal output
 GREEN='\033[0;32m'
-RED='\033[0;31m'
+BRIGHT_GREEN='\033[1;32m'
+DARK_GREEN='\033[2;32m'
 YELLOW='\033[0;33m'
 CYAN='\033[0;36m'
-MAGENTA='\033[0;35m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # Function to check if a command is available
@@ -377,7 +367,7 @@ while true; do
             ;;
         6)
             clear
-            echo "Exiting..."
+            echo -e "${BRIGHT_GREEN}Exiting...${NC}"
             exit 0
             ;;
         *)
