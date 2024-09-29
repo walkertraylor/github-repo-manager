@@ -384,7 +384,7 @@ show_main_menu() {
     
     dialog --clear --title "GitHub Repository Manager" \
            --no-cancel \
-           --menu "User: $username ($name)\nPublic Repos: $public_repos | Private Repos: $private_repos | Total Repos: $total_repos\n\nChoose an operation:" 22 70 9 \
+           --menu "User: $username ($name)\nPublic Repos: $public_repos | Private Repos: $private_repos\n\nChoose an operation:" 22 70 9 \
            1 "List all repositories" \
            2 "Toggle visibility for selected repositories" \
            3 "Save current repository status" \
