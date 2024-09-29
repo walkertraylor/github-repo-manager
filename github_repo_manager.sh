@@ -138,29 +138,10 @@ toggle_repo_archive_status() {
     log "Checking current archive status of $repo"
 
     # Get current archive status using GitHub CLI
-    local retry_count=0
-    local max_retries=3
-    local retry_delay=5  # Delay in seconds between retries
-
-    while [ $retry_count -lt $max_retries ]; do
-        current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>&1)
-        if [ $? -eq 0 ]; then
-            break  # Command succeeded, exit the loop
-        fi
-        log "Failed to get archive status for $repo. Retrying in $retry_delay seconds..."
-        sleep $retry_delay
-        ((retry_count++))
-    done
-
-    if [ $retry_count -eq $max_retries ]; then
-        log "Failed to get archive status for $repo after $max_retries attempts."
-        dialog --title "Error" --msgbox "Failed to get archive status for $repo. Please try again later." 10 60
-        return 1
-    fi
-
-    if echo "$current_status" | grep -q "API rate limit exceeded"; then
-        log "Error: GitHub API rate limit exceeded"
-        dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
+    current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>&1)
+    if [ $? -ne 0 ]; then
+        log "Failed to get archive status for $repo. Error: $current_status"
+        dialog --title "Error" --msgbox "Failed to get archive status for $repo.\nError: $current_status" 10 60
         return 1
     fi
 
@@ -175,7 +156,8 @@ toggle_repo_archive_status() {
 
     # Confirmation dialog
     dialog --title "Confirm Archive Status Change" --yesno "Are you sure you want to change $repo to $new_status?" 8 60
-    if [ $? -ne 0 ]; then
+    local dialog_result=$?
+    if [ $dialog_result -ne 0 ]; then
         log "User cancelled archive status change for $repo"
         return 2
     fi
