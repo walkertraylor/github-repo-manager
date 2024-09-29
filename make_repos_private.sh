@@ -204,6 +204,7 @@ list_repositories() {
     while IFS='|' read -r repo visibility archived; do
         archived_status=$([ "$archived" = "true" ] && echo "[Archived]" || echo "")
         formatted_list+="• $repo ($visibility) $archived_status\n"
+        echo "$(date): $repo | $visibility | $archived_status" >> "$LOG_FILE"
     done <<< "$repo_list"
     
     dialog --title "Repository List" --msgbox "Repositories and their visibility:\n\n$formatted_list" 24 80
