@@ -79,6 +79,8 @@ change_repo_visibility() {
     output=$(gh repo edit "$repo" --visibility "$visibility" 2>&1)
     if [ $? -eq 0 ]; then
         echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}$visibility${NC}"
+        # Refresh the repository list
+        all_repos=$(get_all_repositories)
         return 0
     else
         if echo "$output" | grep -q "API rate limit exceeded"; then
@@ -113,7 +115,7 @@ check_empty_repo_list() {
 
 # Function to get all repositories
 get_all_repositories() {
-    gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner)|\(.visibility)"'
+    gh repo list --json nameWithOwner,visibility --limit 1000 --jq '.[] | "\(.nameWithOwner)|\(.visibility)"'
 }
 
 # Function to display repository selection menu
