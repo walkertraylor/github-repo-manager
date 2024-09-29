@@ -4,8 +4,9 @@
 GREEN='\033[38;5;82m'
 RED='\033[38;5;196m'
 YELLOW='\033[38;5;226m'
-CYAN='\033[38;5;51m'
+CYAN='\033[38;5;87m'
 MAGENTA='\033[38;5;201m'
+BLUE='\033[38;5;33m'
 NC='\033[0m' # No Color
 
 # Function to check if a command is available
@@ -108,7 +109,7 @@ toggle_repo_visibility() {
 # Function to list all repositories
 list_repositories() {
     echo -e "${YELLOW}Listing all repositories:${NC}"
-    gh repo list --json nameWithOwner,visibility --jq '.[] | "${CYAN}\(.nameWithOwner)${NC} - ${MAGENTA}\(.visibility)${NC}"'
+    gh repo list --json nameWithOwner,visibility --jq '.[] | "${BLUE}\(.nameWithOwner)${NC} - ${CYAN}\(.visibility)${NC}"'
 }
 
 # Function to save repository status
