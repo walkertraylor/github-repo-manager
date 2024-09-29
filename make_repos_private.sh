@@ -80,68 +80,50 @@ fi
 # Function to change repo visibility
 change_repo_visibility() {
     local repo="$1"
+    local target_visibility="$2"
+    local current_visibility
     local output
 
     echo "$(date): Checking current visibility of $repo" >> "$LOG_FILE"
-    echo "Running command: gh repo view \"$repo\" --json visibility --jq '.visibility'" >> "$LOG_FILE"
-    
-    local current_visibility
-    current_visibility=$(timeout 10s gh repo view "$repo" --json visibility --jq '.visibility' 2>&1)
-    local view_exit_code=$?
-    
-    echo "$(date): gh view command exit code: $view_exit_code" >> "$LOG_FILE"
-    echo "$(date): Current visibility: $current_visibility" >> "$LOG_FILE"
 
-    if [ $view_exit_code -eq 0 ]; then
-        current_visibility=$(echo "$current_visibility" | tr '[:upper:]' '[:lower:]')
-        if [ "$current_visibility" = "private" ]; then
-            echo -e "${GREEN}✅ Repository ${CYAN}$repo${GREEN} is already ${MAGENTA}private${NC}"
-            echo "$(date): Repository $repo is already private" >> "$LOG_FILE"
-            echo "private"
-            return 0
-        elif [ "$current_visibility" = "public" ]; then
-            echo "$(date): Attempting to change visibility of $repo to private" >> "$LOG_FILE"
-            echo "Running command: gh repo edit \"$repo\" --visibility private" >> "$LOG_FILE"
-
-            output=$(timeout 10s gh repo edit "$repo" --visibility private 2>&1)
-            local edit_exit_code=$?
-
-            echo "$(date): gh edit command exit code: $edit_exit_code" >> "$LOG_FILE"
-            echo "$(date): gh edit command output: $output" >> "$LOG_FILE"
-
-            if [ $edit_exit_code -eq 0 ]; then
-                echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}private${NC}"
-                echo "$(date): Successfully changed $repo to private" >> "$LOG_FILE"
-                echo "private"
-                return 0
-            else
-                echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}private${NC}"
-                echo "$(date): Failed to change $repo to private. Exit code: $edit_exit_code" >> "$LOG_FILE"
-                echo -e "${RED}❌ Error: $output${NC}"
-                echo "$(date): Error: $output" >> "$LOG_FILE"
-                return 1
-            fi
-        else
-            echo -e "${YELLOW}⚠️ Unexpected visibility status for ${CYAN}$repo${NC}: ${MAGENTA}$current_visibility${NC}"
-            echo "$(date): Unexpected visibility status for $repo: $current_visibility" >> "$LOG_FILE"
-            return 1
-        fi
-    elif [ $view_exit_code -eq 124 ]; then
-        echo -e "${RED}❌ Timeout occurred while getting visibility status for ${CYAN}$repo${NC}"
-        echo "$(date): Timeout occurred while getting visibility status for $repo" >> "$LOG_FILE"
-        return 1
-    else
+    # Get current visibility
+    current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility' 2>&1)
+    if [ $? -ne 0 ]; then
         echo -e "${RED}❌ Failed to get visibility status for ${CYAN}$repo${NC}"
-        echo "$(date): Failed to get visibility status for $repo. Exit code: $view_exit_code" >> "$LOG_FILE"
-        if echo "$current_visibility" | grep -q "API rate limit exceeded"; then
+        echo "$(date): Failed to get visibility status for $repo. Error: $current_visibility" >> "$LOG_FILE"
+        return 1
+    fi
+
+    current_visibility=$(echo "$current_visibility" | tr '[:upper:]' '[:lower:]')
+    echo "$(date): Current visibility of $repo: $current_visibility" >> "$LOG_FILE"
+
+    # Check if change is needed
+    if [ "$current_visibility" = "$target_visibility" ]; then
+        echo -e "${GREEN}✅ Repository ${CYAN}$repo${GREEN} is already ${MAGENTA}$target_visibility${NC}"
+        echo "$(date): Repository $repo is already $target_visibility" >> "$LOG_FILE"
+        return 0
+    fi
+
+    # Change visibility
+    echo "$(date): Changing visibility of $repo to $target_visibility" >> "$LOG_FILE"
+    output=$(gh repo edit "$repo" --visibility "$target_visibility" 2>&1)
+    if [ $? -eq 0 ]; then
+        echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}$target_visibility${NC}"
+        echo "$(date): Successfully changed $repo to $target_visibility" >> "$LOG_FILE"
+        return 0
+    else
+        echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}$target_visibility${NC}"
+        echo "$(date): Failed to change $repo to $target_visibility. Error: $output" >> "$LOG_FILE"
+        
+        if echo "$output" | grep -q "API rate limit exceeded"; then
             echo -e "${RED}❌ GitHub API rate limit exceeded. Please try again later.${NC}"
             echo "$(date): GitHub API rate limit exceeded" >> "$LOG_FILE"
-        elif echo "$current_visibility" | grep -q "Could not resolve to a Repository"; then
-            echo -e "${RED}❌ Repository ${CYAN}$repo${RED} not found or you don't have permission to view it.${NC}"
+        elif echo "$output" | grep -q "Could not resolve to a Repository"; then
+            echo -e "${RED}❌ Repository ${CYAN}$repo${RED} not found or you don't have permission to modify it.${NC}"
             echo "$(date): Repository $repo not found or permission denied" >> "$LOG_FILE"
         else
-            echo -e "${RED}❌ Error: $current_visibility${NC}"
-            echo "$(date): Error: $current_visibility" >> "$LOG_FILE"
+            echo -e "${RED}❌ Error: $output${NC}"
+            echo "$(date): Error: $output" >> "$LOG_FILE"
         fi
         return 1
     fi
@@ -199,26 +181,11 @@ toggle_repo_visibility() {
         new_visibility="public"
     fi
 
-    local result=$(change_repo_visibility "$repo" "$new_visibility")
-    local exit_code=$?
-
-    case $exit_code in
-        0)
-            dialog --msgbox "Successfully changed $repo from $current_visibility to $new_visibility" 8 60
-            ;;
-        2)
-            dialog --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
-            ;;
-        3)
-            dialog --msgbox "Command timed out while changing $repo from $current_visibility to $new_visibility. The operation may still be in progress." 10 70
-            ;;
-        4)
-            dialog --msgbox "Repository $repo not found or you don't have permission to modify it." 8 70
-            ;;
-        *)
-            dialog --msgbox "Failed to change $repo from $current_visibility to $new_visibility: $result" 10 70
-            ;;
-    esac
+    if change_repo_visibility "$repo" "$new_visibility"; then
+        dialog --msgbox "Successfully changed $repo from $current_visibility to $new_visibility" 8 60
+    else
+        dialog --msgbox "Failed to change $repo from $current_visibility to $new_visibility. Check the log file for details." 10 70
+    fi
 }
 
 # Function to list all repositories
