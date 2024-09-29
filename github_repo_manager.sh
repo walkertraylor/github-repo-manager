@@ -414,7 +414,7 @@ list_repositories() {
         log "No repositories found or empty response from GitHub CLI"
         dialog --title "Warning" --msgbox "No repositories found or empty response from GitHub CLI. Please check your GitHub authentication and permissions." $(calculate_dialog_size)
         return 1
-    }
+    fi
     
     local formatted_list=""
     while IFS='|' read -r repo visibility archived; do
