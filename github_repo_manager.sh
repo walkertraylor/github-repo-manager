@@ -144,7 +144,7 @@ toggle_repo_visibility() {
     output=$(gh repo edit "$repo" --visibility "$new_visibility" 2>&1)
     if [ $? -eq 0 ]; then
         log "Successfully changed $repo from $current_visibility to $new_visibility"
-        dialog --title "Success" $(calculate_dialog_size) --msgbox "Changed $repo from $current_visibility to $new_visibility"
+        dialog --title "Success" --msgbox "Changed $repo from $current_visibility to $new_visibility" $(calculate_dialog_size)
         return 0
     else
         log "Failed to change $repo from $current_visibility to $new_visibility. Error: $output"
@@ -152,16 +152,16 @@ toggle_repo_visibility() {
         # Handle specific error cases
         if echo "$output" | grep -q "API rate limit exceeded"; then
             log "Error: GitHub API rate limit exceeded"
-            dialog --title "Error" $(calculate_dialog_size) --msgbox "GitHub API rate limit exceeded. Please try again later."
+            dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." $(calculate_dialog_size)
         elif echo "$output" | grep -q "Could not resolve to a Repository"; then
             log "Error: Repository $repo not found or no permission to modify"
-            dialog --title "Error" $(calculate_dialog_size) --msgbox "Repository $repo not found or you don't have permission to modify it."
+            dialog --title "Error" --msgbox "Repository $repo not found or you don't have permission to modify it." $(calculate_dialog_size)
         elif echo "$output" | grep -q "is archived and cannot be edited"; then
             log "Error: Repository $repo is archived and cannot be edited"
-            dialog --title "Error" $(calculate_dialog_size) --msgbox "Repository $repo is archived and cannot be edited.\nPlease unarchive the repository first."
+            dialog --title "Error" --msgbox "Repository $repo is archived and cannot be edited.\nPlease unarchive the repository first." $(calculate_dialog_size)
         else
             log "Unhandled error occurred: $output"
-            dialog --title "Error" $(calculate_dialog_size) --msgbox "Failed to change $repo visibility.\nError: $output"
+            dialog --title "Error" --msgbox "Failed to change $repo visibility.\nError: $output" $(calculate_dialog_size)
         fi
         return 1
     fi
@@ -259,7 +259,7 @@ validate_repo_name() {
 check_empty_repo_list() {
     local repos="$1"
     if [ -z "$repos" ]; then
-        dialog $(calculate_dialog_size) --msgbox "No repositories found. Please check your GitHub authentication and try again."
+        dialog --msgbox "No repositories found. Please check your GitHub authentication and try again." $(calculate_dialog_size)
         return 1
     fi
     return 0
@@ -416,14 +416,14 @@ save_repo_status() {
     
     if [ $? -ne 0 ] || [ -z "$output_file" ]; then
         log "Operation cancelled or empty filename provided for saving repository status"
-        dialog $(calculate_dialog_size) --msgbox "Operation cancelled or empty filename provided."
+        dialog --msgbox "Operation cancelled or empty filename provided." $(calculate_dialog_size)
         return
     fi
 
     # Validate filename
     if [[ ! $output_file =~ ^[a-zA-Z0-9_.-]+\.csv$ ]]; then
         log "Invalid filename provided: $output_file"
-        dialog $(calculate_dialog_size) --msgbox "Invalid filename. Please use only letters, numbers, underscores, hyphens, and periods, and end with .csv"
+        dialog --msgbox "Invalid filename. Please use only letters, numbers, underscores, hyphens, and periods, and end with .csv" $(calculate_dialog_size)
         return
     fi
 
@@ -433,11 +433,11 @@ save_repo_status() {
     log "Attempting to save repository status to $output_file"
     if ! gh repo list --json nameWithOwner,visibility,isArchived --jq '.[] | "\(.nameWithOwner),\(.visibility),\(.isArchived)"' > "$output_file"; then
         log "Failed to save repository status to $output_file"
-        dialog $(calculate_dialog_size) --msgbox "Failed to save repository status. Please check your GitHub authentication and try again."
+        dialog --msgbox "Failed to save repository status. Please check your GitHub authentication and try again." $(calculate_dialog_size)
         return
     fi
     log "Successfully saved repository status to $output_file"
-    dialog $(calculate_dialog_size) --msgbox "Repository status saved to $output_file"
+    dialog --msgbox "Repository status saved to $output_file" $(calculate_dialog_size)
 }
 
 # Function to load and apply repository status
@@ -447,27 +447,27 @@ load_and_apply_repo_status() {
     
     if [ $? -ne 0 ] || [ -z "$input_file" ]; then
         log "Operation cancelled or empty filename provided for loading repository status"
-        dialog $(calculate_dialog_size) --msgbox "Operation cancelled or empty filename provided."
+        dialog --msgbox "Operation cancelled or empty filename provided." $(calculate_dialog_size)
         return
     fi
 
     if [ ! -f "$input_file" ]; then
         log "File not found: $input_file"
-        dialog $(calculate_dialog_size) --msgbox "File not found: $input_file"
+        dialog --msgbox "File not found: $input_file" $(calculate_dialog_size)
         return
     fi
 
     # Check if the file is readable
     if [ ! -r "$input_file" ]; then
         log "Cannot read file: $input_file. Please check permissions."
-        dialog $(calculate_dialog_size) --msgbox "Cannot read file: $input_file. Please check permissions."
+        dialog --msgbox "Cannot read file: $input_file. Please check permissions." $(calculate_dialog_size)
         return
     fi
 
     # Validate file content
     if ! grep -qE '^[^,]+,(public|private),(true|false)$' "$input_file"; then
         log "Invalid file format in $input_file"
-        dialog $(calculate_dialog_size) --msgbox "Invalid file format. Each line should be 'repo,visibility,isArchived'."
+        dialog --msgbox "Invalid file format. Each line should be 'repo,visibility,isArchived'." $(calculate_dialog_size)
         return
     fi
 
@@ -475,33 +475,33 @@ load_and_apply_repo_status() {
     while IFS=',' read -r repo visibility is_archived; do
         if ! validate_repo_name "$repo"; then
             log "Invalid repository name: $repo. Skipping."
-            dialog $(calculate_dialog_size) --msgbox "Invalid repository name: $repo. Skipping."
+            dialog --msgbox "Invalid repository name: $repo. Skipping." $(calculate_dialog_size)
             continue
         fi
-        dialog $(calculate_dialog_size) --yesno "Change $repo to $visibility and archive status to $is_archived?"
+        dialog --yesno "Change $repo to $visibility and archive status to $is_archived?" $(calculate_dialog_size)
         if [ $? -eq 0 ]; then
             log "Attempting to change $repo to $visibility and archive status to $is_archived"
             if toggle_repo_visibility "$repo"; then
                 if [ "$is_archived" = "true" ]; then
                     if gh repo edit "$repo" --archived; then
                         log "Successfully changed $repo to $visibility and archived"
-                        dialog $(calculate_dialog_size) --msgbox "Successfully changed $repo to $visibility and archived"
+                        dialog --msgbox "Successfully changed $repo to $visibility and archived" $(calculate_dialog_size)
                     else
                         log "Changed $repo to $visibility but failed to archive"
-                        dialog $(calculate_dialog_size) --msgbox "Changed $repo to $visibility but failed to archive"
+                        dialog --msgbox "Changed $repo to $visibility but failed to archive" $(calculate_dialog_size)
                     fi
                 else
                     if gh repo edit "$repo" --unarchived; then
                         log "Successfully changed $repo to $visibility and unarchived"
-                        dialog $(calculate_dialog_size) --msgbox "Successfully changed $repo to $visibility and unarchived"
+                        dialog --msgbox "Successfully changed $repo to $visibility and unarchived" $(calculate_dialog_size)
                     else
                         log "Changed $repo to $visibility but failed to unarchive"
-                        dialog $(calculate_dialog_size) --msgbox "Changed $repo to $visibility but failed to unarchive"
+                        dialog --msgbox "Changed $repo to $visibility but failed to unarchive" $(calculate_dialog_size)
                     fi
                 fi
             else
                 log "Failed to change $repo to $visibility"
-                dialog $(calculate_dialog_size) --msgbox "Failed to change $repo to $visibility"
+                dialog --msgbox "Failed to change $repo to $visibility" $(calculate_dialog_size)
             fi
         else
             log "User skipped changing $repo"
@@ -509,7 +509,7 @@ load_and_apply_repo_status() {
     done < "$input_file"
 
     log "Finished applying repository status from $input_file"
-    dialog $(calculate_dialog_size) --msgbox "Finished applying repository status from $input_file"
+    dialog --msgbox "Finished applying repository status from $input_file" $(calculate_dialog_size)
 }
 
 # Function to change repository visibility
@@ -548,7 +548,7 @@ search_repos() {
 
     local repos=$(gh repo list --json nameWithOwner,visibility,isArchived --jq ".[] | select(.nameWithOwner | contains(\"$keyword\")) | \"\(.nameWithOwner)|\(.visibility)|\(.isArchived)\"")
     if [ -z "$repos" ]; then
-        dialog $(calculate_dialog_size) --msgbox "No repositories found matching the keyword: $keyword"
+        dialog --msgbox "No repositories found matching the keyword: $keyword" $(calculate_dialog_size)
         return
     fi
 
@@ -766,7 +766,7 @@ while true; do
             exit 0
             ;;
         *)
-            dialog $(calculate_dialog_size) --msgbox "Invalid option. Please try again."
+            dialog --msgbox "Invalid option. Please try again." $(calculate_dialog_size)
             ;;
     esac
 done
