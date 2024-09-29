@@ -83,49 +83,55 @@ change_repo_visibility() {
     local output
 
     echo "$(date): Attempting to change visibility of $repo to private" >> "$LOG_FILE"
+    echo "Running command: gh repo edit \"$repo\" --visibility private" >> "$LOG_FILE"
 
-    output=$(timeout 60s gh repo edit "$repo" --visibility private 2>&1)
+    output=$(gh repo edit "$repo" --visibility private 2>&1)
     local exit_code=$?
 
     echo "$(date): gh command exit code: $exit_code" >> "$LOG_FILE"
     echo "$(date): gh command output: $output" >> "$LOG_FILE"
 
     if [ $exit_code -eq 0 ]; then
-        echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}private${NC}"
-        echo "$(date): Successfully changed $repo to private" >> "$LOG_FILE"
-        # Refresh the repository list
-        all_repos=$(get_all_repositories)
-        echo "private"
-        return 0
-    elif [ $exit_code -eq 124 ]; then
-        echo -e "${YELLOW}⚠️ Command timed out while changing ${CYAN}$repo${YELLOW} to ${MAGENTA}private${NC}"
-        echo -e "${YELLOW}Checking current visibility...${NC}"
-        echo "$(date): Command timed out. Checking current visibility." >> "$LOG_FILE"
-        local current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility')
-        echo "$(date): Current visibility: $current_visibility" >> "$LOG_FILE"
-        if [ "$current_visibility" = "private" ]; then
-            echo -e "${GREEN}✅ Repository ${CYAN}$repo${GREEN} is now ${MAGENTA}private${NC}"
-            echo "$(date): Repository $repo is now private despite timeout" >> "$LOG_FILE"
+        if echo "$output" | grep -q "visibility set to private"; then
+            echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}private${NC}"
+            echo "$(date): Successfully changed $repo to private" >> "$LOG_FILE"
+            echo "private"
             return 0
         else
-            echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}private${NC}"
-            echo "$(date): Failed to change $repo to private after timeout" >> "$LOG_FILE"
-            return 3
+            echo -e "${YELLOW}⚠️ Command succeeded but unexpected output for ${CYAN}$repo${NC}"
+            echo "$(date): Command succeeded but unexpected output for $repo" >> "$LOG_FILE"
         fi
+    fi
+
+    echo -e "${YELLOW}Checking current visibility...${NC}"
+    echo "$(date): Checking current visibility." >> "$LOG_FILE"
+    echo "Running command: gh repo view \"$repo\" --json visibility --jq '.visibility'" >> "$LOG_FILE"
+    
+    local current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility' 2>&1)
+    local view_exit_code=$?
+    
+    echo "$(date): gh view command exit code: $view_exit_code" >> "$LOG_FILE"
+    echo "$(date): Current visibility: $current_visibility" >> "$LOG_FILE"
+
+    if [ $view_exit_code -eq 0 ] && [ "$current_visibility" = "private" ]; then
+        echo -e "${GREEN}✅ Repository ${CYAN}$repo${GREEN} is ${MAGENTA}private${NC}"
+        echo "$(date): Repository $repo is private" >> "$LOG_FILE"
+        echo "private"
+        return 0
     else
+        echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}private${NC}"
+        echo "$(date): Failed to change $repo to private. Exit code: $exit_code, View exit code: $view_exit_code" >> "$LOG_FILE"
         if echo "$output" | grep -q "API rate limit exceeded"; then
             echo -e "${RED}❌ GitHub API rate limit exceeded. Please try again later.${NC}"
             echo "$(date): GitHub API rate limit exceeded" >> "$LOG_FILE"
-            return 2
         elif echo "$output" | grep -q "Could not resolve to a Repository"; then
             echo -e "${RED}❌ Repository ${CYAN}$repo${RED} not found or you don't have permission to modify it.${NC}"
             echo "$(date): Repository $repo not found or permission denied" >> "$LOG_FILE"
-            return 4
         else
-            echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}private${RED}: $output${NC}"
-            echo "$(date): Failed to change $repo to private: $output" >> "$LOG_FILE"
-            return 1
+            echo -e "${RED}❌ Error: $output${NC}"
+            echo "$(date): Error: $output" >> "$LOG_FILE"
         fi
+        return 1
     fi
 }
 
