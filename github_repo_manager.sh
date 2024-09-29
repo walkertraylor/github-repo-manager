@@ -354,7 +354,7 @@ show_repo_details() {
     local issues=$(echo "$repo_info" | jq -r '.openIssues.totalCount')
     local prs=$(echo "$repo_info" | jq -r '.pullRequests.totalCount')
 
-    dialog --title "Repository Details: $repo" --msgbox "\
+    dialog --title "Repository Details: $repo" --msgbox "
 Name: $name
 Description: $description
 URL: $url
