@@ -190,8 +190,15 @@ process_selected_repos() {
 # Function to list all repositories
 list_repositories() {
     echo "$(date): Listing all repositories" >> "$LOG_FILE"
-    local repo_list=$(gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner) - \(.visibility)"')
-    dialog --title "Repository List" --msgbox "$repo_list" 20 80
+    local repo_list=$(gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner)|\(.visibility)"')
+    local menu_items=()
+    local i=1
+    while IFS='|' read -r repo visibility; do
+        menu_items+=("$i" "$repo - $visibility")
+        ((i++))
+    done <<< "$repo_list"
+
+    dialog --title "Repository List" --menu "Repositories and their visibility:" 20 80 15 "${menu_items[@]}" 2>&1 >/dev/tty
 }
 
 # Function to save repository status
@@ -302,10 +309,7 @@ while true; do
         2)
             all_repos=$(get_all_repositories)
             if check_empty_repo_list "$all_repos"; then
-                clear
-                echo "Repository List:"
-                echo "$all_repos" | column -t -s '|'
-                read -p "Press Enter to continue..."
+                list_repositories
             fi
             ;;
         3)
