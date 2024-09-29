@@ -25,6 +25,22 @@ list_repositories() {
     gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner) - \(.visibility)"'
 }
 
+# Function to export repository visibility status
+export_visibility_status() {
+    local output_file="$1"
+    echo -e "${YELLOW}Exporting repository visibility status to $output_file${NC}"
+    gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner),\(.visibility)"' > "$output_file"
+    echo -e "${GREEN}✅ Exported repository visibility status to $output_file${NC}"
+}
+
+# Function to backup repository visibility status
+backup_visibility_status() {
+    local backup_file="visibility_backup_$(date +%Y%m%d_%H%M%S).csv"
+    echo -e "${YELLOW}Backing up repository visibility status to $backup_file${NC}"
+    export_visibility_status "$backup_file"
+    echo -e "${GREEN}✅ Backed up repository visibility status to $backup_file${NC}"
+}
+
 # Check if GitHub CLI is installed
 if ! command -v gh &> /dev/null; then
     echo "GitHub CLI (gh) is not installed. Please install it and try again."
@@ -42,35 +58,44 @@ total_repos=$(gh repo list --limit 1000 | wc -l)
 echo "Total number of repositories: $total_repos"
 
 # Menu
-echo -e "\nWhat would you like to do?"
-echo "1. Change all public repositories to private"
-echo "2. Change all private repositories to public"
-echo "3. List all repositories"
-echo "4. Exit"
-read -p "Enter your choice (1-4): " choice
+while true; do
+    echo -e "\nWhat would you like to do?"
+    echo "1. Change all public repositories to private"
+    echo "2. Change all private repositories to public"
+    echo "3. List all repositories"
+    echo "4. Backup repository visibility status"
+    echo "5. Exit"
+    read -p "Enter your choice (1-5): " choice
 
-case $choice in
-    1)
-        target_visibility="private"
-        source_visibility="public"
-        ;;
-    2)
-        target_visibility="public"
-        source_visibility="private"
-        ;;
-    3)
-        list_repositories
-        exit 0
-        ;;
-    4)
-        echo "Exiting."
-        exit 0
-        ;;
-    *)
-        echo "Invalid choice. Exiting."
-        exit 1
-        ;;
-esac
+    case $choice in
+        1)
+            target_visibility="private"
+            source_visibility="public"
+            break
+            ;;
+        2)
+            target_visibility="public"
+            source_visibility="private"
+            break
+            ;;
+        3)
+            list_repositories
+            continue
+            ;;
+        4)
+            backup_visibility_status
+            continue
+            ;;
+        5)
+            echo "Exiting."
+            exit 0
+            ;;
+        *)
+            echo "Invalid choice. Please try again."
+            continue
+            ;;
+    esac
+done
 
 echo "This action will change all $source_visibility repositories to $target_visibility."
 echo "This action cannot be undone easily. Are you sure you want to proceed? (y/n)"
@@ -84,12 +109,15 @@ fi
 echo "Changing $source_visibility repositories to $target_visibility..."
 echo "This may take a while depending on the number of repositories."
 
+# Backup current visibility status
+backup_visibility_status
+
 # Get list of repositories to change
 repos_to_change=$(gh repo list --json nameWithOwner,visibility --jq ".[] | select(.visibility == \"$source_visibility\") | .nameWithOwner")
 
 # Check if there are any repos to change
 if [ -z "$repos_to_change" ]; then
-    echo "No $source_visibility repositories found."
+    echo "No $source_visibility repositories found. No changes were made."
     exit 0
 fi
 
@@ -117,3 +145,5 @@ if [ ${#failed_repos[@]} -gt 0 ]; then
     echo "Repositories that failed to change:"
     printf '%s\n' "${failed_repos[@]}"
 fi
+
+echo -e "\nA backup of the original visibility status has been created."
