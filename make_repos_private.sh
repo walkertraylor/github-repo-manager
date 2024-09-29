@@ -197,15 +197,15 @@ process_selected_repos() {
 list_repositories() {
     echo "$(date): Listing all repositories" >> "$LOG_FILE"
     local repo_list=$(gh repo list --json nameWithOwner,visibility,isArchived --jq '.[] | "\(.nameWithOwner)|\(.visibility)|\(.isArchived)"')
-    local menu_items=()
+    local display_list=""
     local i=1
     while IFS='|' read -r repo visibility archived; do
         archived_status=$([ "$archived" = "true" ] && echo "[Archived]" || echo "")
-        menu_items+=("$i" "$repo - $visibility $archived_status")
+        display_list+="$i. $repo - $visibility $archived_status\n"
         ((i++))
     done <<< "$repo_list"
 
-    dialog --title "Repository List" --menu "Repositories and their visibility:" 20 80 15 "${menu_items[@]}" 2>&1 >/dev/tty
+    dialog --title "Repository List" --msgbox "Repositories and their visibility:\n\n$display_list" 24 80
 }
 
 # Function to save repository status
