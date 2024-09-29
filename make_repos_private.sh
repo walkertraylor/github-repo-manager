@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Set up logging
-LOG_FILE="repo_visibility_changer.log"
+LOG_FILE="github_repo_manager.log"
 log() {
     echo "$(date): $1" >> "$LOG_FILE"
 }
@@ -337,7 +337,7 @@ search_repos() {
 
 # Function to display the main menu
 show_main_menu() {
-    dialog --clear --title "GitHub Repository Visibility Manager" \
+    dialog --clear --title "GitHub Repository Manager" \
            --menu "Choose an operation:" 20 70 8 \
            1 "List all repositories" \
            2 "Toggle visibility for selected repositories" \
