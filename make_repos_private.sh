@@ -50,6 +50,17 @@ fi
 # Set PAGER to 'cat' to prevent pagination
 export PAGER=cat
 
+# Function to display the main menu
+show_main_menu() {
+    dialog --clear --title "GitHub Repository Visibility Manager" \
+           --menu "Choose an operation:" 15 60 5 \
+           1 "Change all public repositories to private" \
+           2 "Change all private repositories to public" \
+           3 "List all repositories" \
+           4 "Backup repository visibility status" \
+           5 "Exit" 2>&1 >/dev/tty
+}
+
 # Main script
 echo "GitHub Repository Visibility Manager"
 
@@ -59,14 +70,7 @@ echo "Total number of repositories: $total_repos"
 
 # Menu
 while true; do
-    echo -e "\nWhat would you like to do?"
-    echo "1. Change all public repositories to private"
-    echo "2. Change all private repositories to public"
-    echo "3. List all repositories"
-    echo "4. Backup repository visibility status"
-    echo "5. Exit"
-    read -p "Enter your choice (1-5): " choice
-
+    choice=$(show_main_menu)
     case $choice in
         1)
             target_visibility="private"
@@ -80,18 +84,23 @@ while true; do
             ;;
         3)
             list_repositories
+            echo "Press Enter to continue..."
+            read
             continue
             ;;
         4)
             backup_visibility_status
+            echo "Press Enter to continue..."
+            read
             continue
             ;;
         5)
+            clear
             echo "Exiting."
             exit 0
             ;;
         *)
-            echo "Invalid choice. Please try again."
+            dialog --msgbox "Invalid choice. Please try again." 8 40
             continue
             ;;
     esac
