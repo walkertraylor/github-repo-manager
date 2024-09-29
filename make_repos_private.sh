@@ -1,9 +1,11 @@
 #!/bin/bash
 
 # Colors for output
-GREEN='\033[0;32m'
-RED='\033[0;31m'
-YELLOW='\033[0;33m'
+GREEN='\033[38;5;82m'
+RED='\033[38;5;196m'
+YELLOW='\033[38;5;226m'
+CYAN='\033[38;5;51m'
+MAGENTA='\033[38;5;201m'
 NC='\033[0m' # No Color
 
 # Function to check if a command is available
@@ -31,14 +33,14 @@ change_repo_visibility() {
     local output
     output=$(gh repo edit "$repo" --visibility "$visibility" 2>&1)
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}✅ Changed $repo to $visibility${NC}"
+        echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}$visibility${NC}"
         return 0
     else
         if echo "$output" | grep -q "API rate limit exceeded"; then
             echo -e "${RED}❌ GitHub API rate limit exceeded. Please try again later.${NC}"
             return 2
         else
-            echo -e "${RED}❌ Failed to change $repo to $visibility: $output${NC}"
+            echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}$visibility${RED}: $output${NC}"
             return 1
         fi
     fi
@@ -106,7 +108,7 @@ toggle_repo_visibility() {
 # Function to list all repositories
 list_repositories() {
     echo -e "${YELLOW}Listing all repositories:${NC}"
-    gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner) - \(.visibility)"'
+    gh repo list --json nameWithOwner,visibility --jq '.[] | "${CYAN}\(.nameWithOwner)${NC} - ${MAGENTA}\(.visibility)${NC}"'
 }
 
 # Function to save repository status
@@ -128,12 +130,12 @@ save_repo_status() {
     # Ensure the directory exists
     mkdir -p "$(dirname "$output_file")"
 
-    echo -e "${YELLOW}Saving repository status to $output_file${NC}"
+    echo -e "${YELLOW}Saving repository status to ${CYAN}$output_file${NC}"
     if ! gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner),\(.visibility)"' > "$output_file"; then
         dialog --msgbox "Failed to save repository status. Please check your GitHub authentication and try again." 8 60
         return
     fi
-    echo -e "${GREEN}✅ Saved repository status to $output_file${NC}"
+    echo -e "${GREEN}✅ Saved repository status to ${CYAN}$output_file${NC}"
     dialog --msgbox "Repository status saved to $output_file" 8 60
 }
 
