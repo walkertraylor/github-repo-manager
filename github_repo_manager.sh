@@ -101,7 +101,7 @@ toggle_repo_visibility() {
     fi
 
     # Attempt to change visibility using GitHub CLI
-    log "Changing visibility of $repo from $current_visibility to $new_visibility"
+    log "Attempting to change visibility of $repo from $current_visibility to $new_visibility"
     output=$(gh repo edit "$repo" --visibility "$new_visibility" 2>&1)
     if [ $? -eq 0 ]; then
         log "Successfully changed $repo from $current_visibility to $new_visibility"
@@ -112,12 +112,16 @@ toggle_repo_visibility() {
         
         # Handle specific error cases
         if echo "$output" | grep -q "API rate limit exceeded"; then
+            log "Error: GitHub API rate limit exceeded"
             dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
         elif echo "$output" | grep -q "Could not resolve to a Repository"; then
+            log "Error: Repository $repo not found or no permission to modify"
             dialog --title "Error" --msgbox "Repository $repo not found or you don't have permission to modify it." 8 60
         elif echo "$output" | grep -q "is archived and cannot be edited"; then
+            log "Error: Repository $repo is archived and cannot be edited"
             dialog --title "Error" --msgbox "Repository $repo is archived and cannot be edited.\nPlease unarchive the repository first." 10 60
         else
+            log "Unhandled error occurred: $output"
             dialog --title "Error" --msgbox "Failed to change $repo visibility.\nError: $output" 10 60
         fi
         return 1
