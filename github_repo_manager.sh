@@ -378,12 +378,13 @@ show_main_menu() {
     local name=$(echo "$user_info" | jq -r '.name')
     local public_repos=$(echo "$user_info" | jq -r '.public_repos')
     local private_repos=$(gh repo list --json visibility --jq 'map(select(.visibility == "private")) | length')
+    local total_repos=$(gh repo list --json name --jq 'length')
     
-    log "Parsed values: username=$username, name=$name, public_repos=$public_repos, private_repos=$private_repos"
+    log "Parsed values: username=$username, name=$name, public_repos=$public_repos, private_repos=$private_repos, total_repos=$total_repos"
     
     dialog --clear --title "GitHub Repository Manager" \
            --no-cancel \
-           --menu "User: $username ($name)\nPublic Repos: $public_repos | Private Repos: $private_repos\n\nChoose an operation:" 22 70 9 \
+           --menu "User: $username ($name)\nPublic Repos: $public_repos | Private Repos: $private_repos | Total Repos: $total_repos\n\nChoose an operation:" 22 70 9 \
            1 "List all repositories" \
            2 "Toggle visibility for selected repositories" \
            3 "Save current repository status" \
