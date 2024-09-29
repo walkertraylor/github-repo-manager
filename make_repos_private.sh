@@ -170,16 +170,15 @@ show_repo_selection_menu() {
            --ok-label "Toggle" \
            --extra-button \
            --extra-label "Back" \
+           --no-cancel \
            --checklist "Choose repositories to change visibility:" 25 80 15 \
            "${menu_items[@]}" 2>&1 >/dev/tty
     
     local return_value=$?
     if [ $return_value -eq 3 ]; then
-        return "BACK"
-    elif [ $return_value -eq 0 ]; then
-        return 0
+        echo "BACK"
     else
-        return 1
+        echo "$REPLY"
     fi
 }
 
