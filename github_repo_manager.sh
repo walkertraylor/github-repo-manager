@@ -215,7 +215,7 @@ toggle_repo_archive_status() {
     # Attempt to change archive status using GitHub CLI
     log "Attempting to change archive status of $repo from $current_status to $new_status"
     log "Executing command: gh repo $archive_action \"$repo\" --yes"
-    output=$(gh repo $archive_action "$repo" --yes 2>&1)
+    output=$(timeout 30s gh repo $archive_action "$repo" --yes 2>&1)
     local gh_result=$?
     log "GitHub CLI command result: $gh_result"
     log "GitHub CLI output: $output"
@@ -224,6 +224,10 @@ toggle_repo_archive_status() {
         log "Successfully changed $repo to $new_status"
         dialog --title "Success" --msgbox "Changed $repo to $new_status" 8 60
         return 0
+    elif [ $gh_result -eq 124 ]; then
+        log "Error: GitHub CLI command timed out after 30 seconds"
+        dialog --title "Error" --msgbox "The operation timed out. The repository status may or may not have changed. Please check manually." 10 60
+        return 1
     else
         log "Failed to change $repo to $new_status. Error: $output"
         
