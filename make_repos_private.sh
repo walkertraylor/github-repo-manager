@@ -166,8 +166,21 @@ show_repo_selection_menu() {
     done <<< "$repos"
 
     dialog --clear --title "Select Repositories to Toggle Visibility" \
+           --backtitle "GitHub Repository Visibility Manager" \
+           --ok-label "Toggle" \
+           --extra-button \
+           --extra-label "Back" \
            --checklist "Choose repositories to change visibility:" 25 80 15 \
-           "${menu_items[@]}" 2>&1 >/dev/tty || echo ""
+           "${menu_items[@]}" 2>&1 >/dev/tty
+    
+    local return_value=$?
+    if [ $return_value -eq 3 ]; then
+        return "BACK"
+    elif [ $return_value -eq 0 ]; then
+        return 0
+    else
+        return 1
+    fi
 }
 
 # Function to process selected repositories
@@ -177,6 +190,14 @@ process_selected_repos() {
     local repo
     local visibility
     local archived
+
+    if [ "$selected_repos" = "BACK" ]; then
+        return
+    fi
+
+    if [ -z "$selected_repos" ]; then
+        return
+    fi
 
     for selection in $selected_repos; do
         repo_info=$(echo "$all_repos" | sed -n "${selection}p")
@@ -337,11 +358,7 @@ while true; do
             all_repos=$(get_all_repositories)
             if check_empty_repo_list "$all_repos"; then
                 selected_repos=$(show_repo_selection_menu "$all_repos")
-                if [ -n "$selected_repos" ]; then
-                    process_selected_repos "$selected_repos" "$all_repos"
-                else
-                    dialog --msgbox "No repositories selected." 8 40
-                fi
+                process_selected_repos "$selected_repos" "$all_repos"
             fi
             ;;
         2)
