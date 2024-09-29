@@ -406,7 +406,7 @@ list_repositories() {
         echo "$(date): $repo | $visibility | $archived_status" >> "$LOG_FILE"
     done <<< "$repo_list"
     
-    dialog --title "Repository List" $(calculate_dialog_size 24 80) --msgbox "Repositories and their visibility:\n\n$formatted_list"
+    dialog --title "Repository List" --msgbox "Repositories and their visibility:\n\n$formatted_list" 24 80
 }
 
 # Function to save repository status
