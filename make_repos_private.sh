@@ -76,17 +76,24 @@ change_repo_visibility() {
     local repo="$1"
     local visibility="$2"
     local output
-    output=$(gh repo edit "$repo" --visibility "$visibility" 2>&1)
-    if [ $? -eq 0 ]; then
+    output=$(timeout 30s gh repo edit "$repo" --visibility "$visibility" 2>&1)
+    local exit_code=$?
+    if [ $exit_code -eq 0 ]; then
         echo -e "${GREEN}✅ Changed ${CYAN}$repo${GREEN} to ${MAGENTA}$visibility${NC}"
         # Refresh the repository list
         all_repos=$(get_all_repositories)
         echo "$visibility"
         return 0
+    elif [ $exit_code -eq 124 ]; then
+        echo -e "${RED}❌ Command timed out while changing ${CYAN}$repo${RED} to ${MAGENTA}$visibility${NC}"
+        return 3
     else
         if echo "$output" | grep -q "API rate limit exceeded"; then
             echo -e "${RED}❌ GitHub API rate limit exceeded. Please try again later.${NC}"
             return 2
+        elif echo "$output" | grep -q "Could not resolve to a Repository"; then
+            echo -e "${RED}❌ Repository ${CYAN}$repo${RED} not found or you don't have permission to modify it.${NC}"
+            return 4
         else
             echo -e "${RED}❌ Failed to change ${CYAN}$repo${RED} to ${MAGENTA}$visibility${RED}: $output${NC}"
             return 1
@@ -146,11 +153,26 @@ toggle_repo_visibility() {
         new_visibility="public"
     fi
 
-    if change_repo_visibility "$repo" "$new_visibility"; then
-        dialog --msgbox "Successfully changed $repo from $current_visibility to $new_visibility" 8 60
-    else
-        dialog --msgbox "Failed to change $repo from $current_visibility to $new_visibility" 8 60
-    fi
+    local result=$(change_repo_visibility "$repo" "$new_visibility")
+    local exit_code=$?
+
+    case $exit_code in
+        0)
+            dialog --msgbox "Successfully changed $repo from $current_visibility to $new_visibility" 8 60
+            ;;
+        2)
+            dialog --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
+            ;;
+        3)
+            dialog --msgbox "Command timed out while changing $repo from $current_visibility to $new_visibility. The operation may still be in progress." 10 70
+            ;;
+        4)
+            dialog --msgbox "Repository $repo not found or you don't have permission to modify it." 8 70
+            ;;
+        *)
+            dialog --msgbox "Failed to change $repo from $current_visibility to $new_visibility: $result" 10 70
+            ;;
+    esac
 }
 
 # Function to list all repositories
