@@ -115,6 +115,11 @@ backup_visibility_status
 # Get list of repositories to change
 repos_to_change=$(gh repo list --json nameWithOwner,visibility --jq ".[] | select(.visibility == \"$source_visibility\") | .nameWithOwner")
 
+# Debug output
+echo "Debug: Repositories to change:"
+echo "$repos_to_change"
+echo "Debug: End of repositories list"
+
 # Check if there are any repos to change
 if [ -z "$repos_to_change" ]; then
     echo "No $source_visibility repositories found. No changes were made."
@@ -128,7 +133,7 @@ success_count=0
 failed_repos=()
 
 # Loop through repositories and change visibility
-echo "$repos_to_change" | while read -r repo; do
+echo "$repos_to_change" | while IFS= read -r repo; do
     ((current++))
     percentage=$((current * 100 / total_to_change))
     echo -ne "[$percentage%] Processing $repo\r"
