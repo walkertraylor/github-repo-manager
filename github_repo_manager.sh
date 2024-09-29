@@ -644,7 +644,20 @@ Commit Count: $commit_count
 Committer Count: $committer_count"
 
     log "Formatted repository details for $repo: $details"
-    dialog --title "Repository Details: $repo" --msgbox "$details" 22 76
+    
+    # Get terminal size
+    term_lines=$(tput lines)
+    term_cols=$(tput cols)
+    
+    # Calculate dialog box size (80% of terminal size)
+    dialog_height=$((term_lines * 80 / 100))
+    dialog_width=$((term_cols * 80 / 100))
+    
+    # Ensure minimum size
+    dialog_height=$((dialog_height < 22 ? 22 : dialog_height))
+    dialog_width=$((dialog_width < 76 ? 76 : dialog_width))
+    
+    dialog --title "Repository Details: $repo" --msgbox "$details" $dialog_height $dialog_width
 }
 
 # Function to display the main menu
