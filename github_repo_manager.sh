@@ -345,9 +345,9 @@ process_selected_repos() {
             if [ "$archived" = "true" ]; then
                 dialog $(calculate_dialog_size) --msgbox "Repository $repo is archived and cannot be modified."
             elif toggle_repo_visibility "$repo"; then
-                dialog $(calculate_dialog_size) --msgbox "Successfully toggled visibility for $repo"
+                dialog --msgbox "Successfully toggled visibility for $repo" $(calculate_dialog_size)
             else
-                dialog $(calculate_dialog_size) --msgbox "Failed to toggle visibility for $repo. Check the log file for details."
+                dialog --msgbox "Failed to toggle visibility for $repo. Check the log file for details." $(calculate_dialog_size)
             fi
         fi
     done
