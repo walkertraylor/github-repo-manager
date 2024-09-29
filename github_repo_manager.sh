@@ -80,17 +80,37 @@ command_exists() {
 }
 
 # Check if required commands are installed
-if ! command_exists gh; then
-    echo "GitHub CLI (gh) is not installed. Please install it and try again."
-    exit 1
-fi
+check_required_commands() {
+    local missing_commands=()
 
-if ! command_exists dialog; then
-    echo "The 'dialog' library is not installed. Please install it and try again."
-    echo "On Ubuntu/Debian: sudo apt-get install dialog"
-    echo "On macOS with Homebrew: brew install dialog"
-    exit 1
-fi
+    if ! command_exists gh; then
+        missing_commands+=("GitHub CLI (gh)")
+    fi
+
+    if ! command_exists dialog; then
+        missing_commands+=("dialog")
+    fi
+
+    if ! command_exists jq; then
+        missing_commands+=("jq")
+    fi
+
+    if [ ${#missing_commands[@]} -ne 0 ]; then
+        echo "Error: The following required commands are not installed:"
+        for cmd in "${missing_commands[@]}"; do
+            echo "- $cmd"
+        done
+        echo "Please install the missing commands and try again."
+        echo "Installation instructions:"
+        echo "- GitHub CLI: https://cli.github.com/"
+        echo "- dialog: Use your system's package manager (e.g., apt-get install dialog)"
+        echo "- jq: Use your system's package manager (e.g., apt-get install jq)"
+        exit 1
+    fi
+}
+
+# Run the check for required commands
+check_required_commands
 
 # Function to toggle repo visibility
 toggle_repo_visibility() {
