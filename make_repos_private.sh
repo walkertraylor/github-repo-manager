@@ -285,15 +285,32 @@ load_and_apply_repo_status() {
 # Set PAGER to 'cat' to prevent pagination
 export PAGER=cat
 
+# Function to search repositories
+search_repos() {
+    local keyword=$(dialog --inputbox "Enter search keyword:" 8 40 2>&1 >/dev/tty)
+    if [ -z "$keyword" ]; then
+        return
+    fi
+
+    local repos=$(gh repo list --json nameWithOwner,visibility,isArchived --jq ".[] | select(.nameWithOwner | contains(\"$keyword\")) | \"\(.nameWithOwner)|\(.visibility)|\(.isArchived)\"")
+    if [ -z "$repos" ]; then
+        dialog --msgbox "No repositories found matching the keyword: $keyword" 8 60
+        return
+    fi
+
+    show_repo_selection_menu "$repos"
+}
+
 # Function to display the main menu
 show_main_menu() {
     dialog --clear --title "GitHub Repository Visibility Manager" \
-           --menu "Choose an operation:" 20 70 7 \
+           --menu "Choose an operation:" 20 70 8 \
            1 "Toggle visibility for selected repositories" \
            2 "List all repositories" \
            3 "Save current repository status" \
            4 "Load and apply repository status" \
-           5 "Exit" 2>&1 >/dev/tty
+           5 "Search repositories" \
+           6 "Exit" 2>&1 >/dev/tty
 }
 
 # Main script
@@ -326,6 +343,9 @@ while true; do
             load_and_apply_repo_status
             ;;
         5)
+            search_repos
+            ;;
+        6)
             clear
             echo "Exiting..."
             exit 0
