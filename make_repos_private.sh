@@ -82,20 +82,43 @@ list_repositories() {
     gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner) - \(.visibility)"'
 }
 
-# Function to export repository visibility status
-export_visibility_status() {
-    local output_file="$1"
-    echo -e "${YELLOW}Exporting repository visibility status to $output_file${NC}"
+# Function to save repository status
+save_repo_status() {
+    local default_file="repo_status_$(date +%Y%m%d_%H%M%S).csv"
+    local output_file=$(dialog --title "Save Repository Status" --inputbox "Enter filename to save status (default: $default_file):" 10 60 "$default_file" 2>&1 >/dev/tty)
+    
+    if [ $? -ne 0 ]; then
+        return
+    fi
+
+    echo -e "${YELLOW}Saving repository status to $output_file${NC}"
     gh repo list --json nameWithOwner,visibility --jq '.[] | "\(.nameWithOwner),\(.visibility)"' > "$output_file"
-    echo -e "${GREEN}✅ Exported repository visibility status to $output_file${NC}"
+    echo -e "${GREEN}✅ Saved repository status to $output_file${NC}"
+    dialog --msgbox "Repository status saved to $output_file" 8 60
 }
 
-# Function to backup repository visibility status
-backup_visibility_status() {
-    local backup_file="visibility_backup_$(date +%Y%m%d_%H%M%S).csv"
-    echo -e "${YELLOW}Backing up repository visibility status to $backup_file${NC}"
-    export_visibility_status "$backup_file"
-    echo -e "${GREEN}✅ Backed up repository visibility status to $backup_file${NC}"
+# Function to load and apply repository status
+load_and_apply_repo_status() {
+    local default_file=$(ls -t repo_status_*.csv 2>/dev/null | head -n1)
+    local input_file=$(dialog --title "Load Repository Status" --inputbox "Enter filename to load status (default: $default_file):" 10 60 "$default_file" 2>&1 >/dev/tty)
+    
+    if [ $? -ne 0 ] || [ ! -f "$input_file" ]; then
+        dialog --msgbox "Invalid file or operation cancelled." 8 40
+        return
+    fi
+
+    while IFS=',' read -r repo visibility; do
+        dialog --yesno "Change $repo to $visibility?" 8 60
+        if [ $? -eq 0 ]; then
+            if change_repo_visibility "$repo" "$visibility"; then
+                dialog --msgbox "Successfully changed $repo to $visibility" 8 60
+            else
+                dialog --msgbox "Failed to change $repo to $visibility" 8 60
+            fi
+        fi
+    done < "$input_file"
+
+    dialog --msgbox "Finished applying repository status from $input_file" 8 60
 }
 
 # Set PAGER to 'cat' to prevent pagination
@@ -104,28 +127,44 @@ export PAGER=cat
 # Function to display the main menu
 show_main_menu() {
     dialog --clear --title "GitHub Repository Visibility Manager" \
-           --menu "Choose an operation:" 15 60 5 \
-           1 "Change all public repositories to private" \
-           2 "Change all private repositories to public" \
-           3 "List all repositories" \
-           4 "Backup repository visibility status" \
+           --menu "Choose an operation:" 15 60 7 \
+           1 "Toggle visibility for selected repositories" \
+           2 "List all repositories" \
+           3 "Save current repository status" \
+           4 "Load and apply repository status" \
            5 "Exit" 2>&1 >/dev/tty
 }
 
 # Main script
 echo "GitHub Repository Visibility Manager"
 
-# Get all repositories
-all_repos=$(get_all_repositories)
-
-# Show repository selection menu
-selected_repos=$(show_repo_selection_menu "$all_repos")
-
-# Toggle visibility for selected repositories
-for selection in $selected_repos; do
-    repo_info=$(echo "$all_repos" | sed -n "${selection}p")
-    IFS='|' read -r repo visibility <<< "$repo_info"
-    toggle_repo_visibility "$repo" "$visibility"
+while true; do
+    choice=$(show_main_menu)
+    case $choice in
+        1)
+            all_repos=$(get_all_repositories)
+            selected_repos=$(show_repo_selection_menu "$all_repos")
+            for selection in $selected_repos; do
+                repo_info=$(echo "$all_repos" | sed -n "${selection}p")
+                IFS='|' read -r repo visibility <<< "$repo_info"
+                toggle_repo_visibility "$repo" "$visibility"
+            done
+            ;;
+        2)
+            list_repositories | dialog --title "Repository List" --programbox 20 70
+            ;;
+        3)
+            save_repo_status
+            ;;
+        4)
+            load_and_apply_repo_status
+            ;;
+        5)
+            echo "Exiting..."
+            exit 0
+            ;;
+        *)
+            dialog --msgbox "Invalid option. Please try again." 8 40
+            ;;
+    esac
 done
-
-dialog --msgbox "Operation completed." 8 40
