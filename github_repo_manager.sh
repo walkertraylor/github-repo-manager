@@ -230,18 +230,16 @@ toggle_repo_archive_status() {
         
         # Verify the change
         current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>/dev/null)
-        if [ "$current_status" = "$is_archived" ]; then
+        if [ "$current_status" = "true" ] && [ "$new_status" = "archived" ] || [ "$current_status" = "false" ] && [ "$new_status" = "unarchived" ]; then
             log "Repository status updated successfully"
             dialog --title "Success" --msgbox "Successfully changed archive status for $repo" 8 60
         else
             log "Warning: Repository status change not immediately reflected in GitHub's API"
             dialog --title "Warning" --msgbox "Repository status change was successful, but the change is not yet reflected in GitHub's API. It may take a few moments to update." 10 70
         fi
-        return 0
     elif [ $gh_result -eq 124 ]; then
         log "Error: GitHub CLI command timed out after 30 seconds"
         dialog --title "Error" --msgbox "The operation timed out. The repository status may or may not have changed. Please check manually." 10 60
-        return 1
     else
         log "Failed to change $repo to $new_status. Error: $output"
         
@@ -259,8 +257,8 @@ toggle_repo_archive_status() {
             log "Unhandled error occurred: $output"
             dialog --title "Error" --msgbox "Failed to change $repo archive status.\nError: $output" 10 60
         fi
-        return 1
     fi
+    return $gh_result
 }
 
 # Function to validate repository name
