@@ -262,13 +262,13 @@ show_repo_selection_menu() {
         ((i++))
     done <<< "$repos"
 
-    dialog --clear --title "Select Repositories to Toggle Visibility" \
-           --backtitle "GitHub Repository Visibility Manager" \
+    dialog --clear --title "Select Repositories to Toggle Archive Status" \
+           --backtitle "GitHub Repository Archive Manager" \
            --ok-label "Toggle" \
            --extra-button \
            --extra-label "Back" \
            --no-cancel \
-           --checklist "Choose repositories to change visibility:" 25 80 15 \
+           --checklist "Choose repositories to change archive status:" 25 80 15 \
            "${menu_items[@]}" 2>&1 >/dev/tty
     
     local return_value=$?
