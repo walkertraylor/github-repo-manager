@@ -343,14 +343,15 @@ process_selected_repos_archive() {
             
             dialog --title "Confirm Archive Status Change" --yesno "Are you sure you want to change the archive status of $repo?" $(calculate_dialog_size)
             if [ $? -eq 0 ]; then
+                log "Attempting to change archive status of $repo"
                 if toggle_repo_archive_status "$repo"; then
-                    dialog --msgbox "Successfully changed archive status for $repo" 8 60
+                    dialog --msgbox "Successfully changed archive status for $repo" $(calculate_dialog_size)
                     refresh_needed=true
                 else
-                    dialog --msgbox "Failed to change archive status for $repo. Check the log file for details." 10 70
+                    dialog --msgbox "Failed to change archive status for $repo. Check the log file for details." $(calculate_dialog_size)
                 fi
             else
-                dialog --msgbox "Archive status change cancelled for $repo" 8 60
+                dialog --msgbox "Archive status change cancelled for $repo" $(calculate_dialog_size)
             fi
         fi
     done
@@ -358,7 +359,7 @@ process_selected_repos_archive() {
     if [ "$refresh_needed" = true ]; then
         CACHED_REPOS=""
         get_all_repositories >/dev/null
-        dialog --msgbox "Repository cache has been refreshed." 8 40
+        dialog --msgbox "Repository cache has been refreshed." $(calculate_dialog_size)
     fi
 }
 
