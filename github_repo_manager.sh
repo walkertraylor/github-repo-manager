@@ -256,26 +256,34 @@ show_repo_selection_menu() {
     local repos="$1"
     local menu_items=()
     local i=1
+    
+    log "Starting show_repo_selection_menu with repos: $repos"
+    
     while IFS='|' read -r repo visibility archived; do
         archived_status=$([ "$archived" = "true" ] && echo "[Archived]" || echo "")
         menu_items+=("$i" "$repo ($visibility) $archived_status" "off")
         ((i++))
     done <<< "$repos"
+    
+    log "Menu items prepared: ${menu_items[*]}"
 
-    dialog --clear --title "Select Repositories to Toggle Archive Status" \
+    local dialog_output=$(dialog --clear --title "Select Repositories to Toggle Archive Status" \
            --backtitle "GitHub Repository Manager" \
            --ok-label "Toggle" \
            --extra-button \
            --extra-label "Back" \
            --no-cancel \
            --checklist "Choose repositories to change archive status:" $(calculate_dialog_size) \
-           "${menu_items[@]}" 2>&1 >/dev/tty
+           "${menu_items[@]}" 2>&1 >/dev/tty)
     
     local return_value=$?
+    log "Dialog return value: $return_value"
+    log "Dialog output: $dialog_output"
+    
     if [ $return_value -eq 3 ]; then
         echo "BACK"
     else
-        echo "$REPLY"
+        echo "$dialog_output"
     fi
 }
 
@@ -327,41 +335,59 @@ process_selected_repos_archive() {
     local archived
     local refresh_needed=false
 
+    log "Starting process_selected_repos_archive"
+    log "Selected repos: $selected_repos"
+    log "All repos: $all_repos"
+
     if [ "$selected_repos" = "BACK" ]; then
+        log "BACK selected, returning"
         return
     fi
 
     if [ -z "$selected_repos" ]; then
+        log "No repositories selected"
         dialog --msgbox "No repositories selected." $(calculate_dialog_size)
         return
     fi
 
     IFS=$'\n' read -d '' -r -a repo_array <<< "$all_repos"
+    log "Repo array size: ${#repo_array[@]}"
+
     for selection in $selected_repos; do
+        log "Processing selection: $selection"
         if [[ $selection =~ ^[0-9]+$ ]] && [ "$selection" -le "${#repo_array[@]}" ]; then
             repo_info="${repo_array[$((selection-1))]}"
             IFS='|' read -r repo visibility archived <<< "$repo_info"
+            log "Selected repo: $repo, visibility: $visibility, archived: $archived"
             
             dialog --title "Confirm Archive Status Change" --yesno "Are you sure you want to change the archive status of $repo?" $(calculate_dialog_size)
             if [ $? -eq 0 ]; then
                 log "Attempting to change archive status of $repo"
                 if toggle_repo_archive_status "$repo"; then
+                    log "Successfully changed archive status for $repo"
                     dialog --msgbox "Successfully changed archive status for $repo" $(calculate_dialog_size)
                     refresh_needed=true
                 else
+                    log "Failed to change archive status for $repo"
                     dialog --msgbox "Failed to change archive status for $repo. Check the log file for details." $(calculate_dialog_size)
                 fi
             else
+                log "Archive status change cancelled for $repo"
                 dialog --msgbox "Archive status change cancelled for $repo" $(calculate_dialog_size)
             fi
+        else
+            log "Invalid selection: $selection"
         fi
     done
 
     if [ "$refresh_needed" = true ]; then
+        log "Refreshing repository cache"
         CACHED_REPOS=""
         get_all_repositories >/dev/null
         dialog --msgbox "Repository cache has been refreshed." $(calculate_dialog_size)
     fi
+
+    log "Finished process_selected_repos_archive"
 }
 
 # Function to list all repositories
