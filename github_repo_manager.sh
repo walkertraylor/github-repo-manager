@@ -201,8 +201,6 @@ toggle_repo_archive_status() {
 
     # Confirmation dialog
     log "Preparing to show confirmation dialog"
-    sleep 1  # Add a small delay before showing the dialog
-    log "Showing confirmation dialog"
     dialog --stdout --title "Confirm Archive Status Change" --yesno "Are you sure you want to change $repo to $new_status?" 8 60
     local dialog_result=$?
     log "Dialog result: $dialog_result"
