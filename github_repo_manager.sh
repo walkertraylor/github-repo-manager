@@ -332,6 +332,7 @@ process_selected_repos_archive() {
     fi
 
     if [ -z "$selected_repos" ]; then
+        dialog --msgbox "No repositories selected." $(calculate_dialog_size)
         return
     fi
 
