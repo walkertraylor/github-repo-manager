@@ -122,27 +122,20 @@ toggle_repo_visibility() {
     log "Checking current visibility of $repo"
 
     # Get current visibility using GitHub CLI
-    current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility' 2>&1)
-    if [ $? -ne 0 ]; then
+    if ! current_visibility=$(gh repo view "$repo" --json visibility --jq '.visibility' 2>&1 | tr '[:upper:]' '[:lower:]'); then
         log "Failed to get visibility status for $repo. Error: $current_visibility"
-        dialog --title "Error" --msgbox "Failed to get visibility status for $repo.\nError: $current_visibility" 10 60
+        dialog --title "Error" --msgbox "Failed to get visibility status for $repo.\nError: $current_visibility" $(calculate_dialog_size)
         return 1
     fi
 
-    current_visibility=$(echo "$current_visibility" | tr '[:upper:]' '[:lower:]')
     log "Current visibility of $repo: $current_visibility"
 
     # Determine new visibility (toggle between public and private)
-    if [ "$current_visibility" = "public" ]; then
-        new_visibility="private"
-    else
-        new_visibility="public"
-    fi
+    new_visibility=$([ "$current_visibility" = "public" ] && echo "private" || echo "public")
 
     # Attempt to change visibility using GitHub CLI
     log "Attempting to change visibility of $repo from $current_visibility to $new_visibility"
-    output=$(gh repo edit "$repo" --visibility "$new_visibility" 2>&1)
-    if [ $? -eq 0 ]; then
+    if output=$(gh repo edit "$repo" --visibility "$new_visibility" 2>&1); then
         log "Successfully changed $repo from $current_visibility to $new_visibility"
         dialog --title "Success" --msgbox "Changed $repo from $current_visibility to $new_visibility" $(calculate_dialog_size)
         return 0
@@ -150,19 +143,24 @@ toggle_repo_visibility() {
         log "Failed to change $repo from $current_visibility to $new_visibility. Error: $output"
         
         # Handle specific error cases
-        if echo "$output" | grep -q "API rate limit exceeded"; then
-            log "Error: GitHub API rate limit exceeded"
-            dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." $(calculate_dialog_size)
-        elif echo "$output" | grep -q "Could not resolve to a Repository"; then
-            log "Error: Repository $repo not found or no permission to modify"
-            dialog --title "Error" --msgbox "Repository $repo not found or you don't have permission to modify it." $(calculate_dialog_size)
-        elif echo "$output" | grep -q "is archived and cannot be edited"; then
-            log "Error: Repository $repo is archived and cannot be edited"
-            dialog --title "Error" --msgbox "Repository $repo is archived and cannot be edited.\nPlease unarchive the repository first." $(calculate_dialog_size)
-        else
-            log "Unhandled error occurred: $output"
-            dialog --title "Error" --msgbox "Failed to change $repo visibility.\nError: $output" $(calculate_dialog_size)
-        fi
+        case "$output" in
+            *"API rate limit exceeded"*)
+                log "Error: GitHub API rate limit exceeded"
+                dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." $(calculate_dialog_size)
+                ;;
+            *"Could not resolve to a Repository"*)
+                log "Error: Repository $repo not found or no permission to modify"
+                dialog --title "Error" --msgbox "Repository $repo not found or you don't have permission to modify it." $(calculate_dialog_size)
+                ;;
+            *"is archived and cannot be edited"*)
+                log "Error: Repository $repo is archived and cannot be edited"
+                dialog --title "Error" --msgbox "Repository $repo is archived and cannot be edited.\nPlease unarchive the repository first." $(calculate_dialog_size)
+                ;;
+            *)
+                log "Unhandled error occurred: $output"
+                dialog --title "Error" --msgbox "Failed to change $repo visibility.\nError: $output" $(calculate_dialog_size)
+                ;;
+        esac
         return 1
     fi
 }
