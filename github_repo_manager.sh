@@ -267,13 +267,13 @@ show_repo_selection_menu() {
     
     log "Menu items prepared: ${menu_items[*]}"
 
-    local dialog_output=$(dialog --clear --title "Select Repositories to Toggle Archive Status" \
+    local dialog_output=$(dialog --clear --title "Select Repositories" \
            --backtitle "GitHub Repository Manager" \
-           --ok-label "Toggle" \
+           --ok-label "Select" \
            --extra-button \
            --extra-label "Back" \
            --no-cancel \
-           --checklist "Choose repositories to change archive status:" $(calculate_dialog_size) \
+           --checklist "Choose repositories:" $(calculate_dialog_size) \
            "${menu_items[@]}" 2>&1 >/dev/tty)
     
     local return_value=$?
@@ -282,8 +282,14 @@ show_repo_selection_menu() {
     
     if [ $return_value -eq 3 ]; then
         echo "BACK"
+    elif [ $return_value -eq 0 ]; then
+        local selected_repos=""
+        for selection in $dialog_output; do
+            selected_repos+="${menu_items[$(( (selection-1) * 3 + 1 ))]}\n"
+        done
+        echo -e "$selected_repos"
     else
-        echo "$dialog_output"
+        echo ""
     fi
 }
 
@@ -300,30 +306,30 @@ process_selected_repos() {
     fi
 
     if [ -z "$selected_repos" ]; then
+        dialog --msgbox "No repositories selected." $(calculate_dialog_size)
         return
     fi
 
-    IFS=$'\n' read -d '' -r -a repo_array <<< "$all_repos"
-    for selection in $selected_repos; do
-        if [[ $selection =~ ^[0-9]+$ ]] && [ "$selection" -le "${#repo_array[@]}" ]; then
-            repo_info="${repo_array[$((selection-1))]}"
-            IFS='|' read -r repo visibility archived <<< "$repo_info"
-            if [ "$archived" = "true" ]; then
-                dialog $(calculate_dialog_size) --msgbox "Repository $repo is archived and cannot be modified."
-            else
-                dialog --title "Confirm Visibility Change" --yesno "Are you sure you want to change the visibility of $repo?" $(calculate_dialog_size)
-                if [ $? -eq 0 ]; then
-                    if toggle_repo_visibility "$repo"; then
-                        dialog --msgbox "Successfully toggled visibility for $repo" $(calculate_dialog_size)
-                    else
-                        dialog --msgbox "Failed to toggle visibility for $repo. Check the log file for details." $(calculate_dialog_size)
-                    fi
-                else
-                    dialog --msgbox "Visibility change cancelled for $repo" $(calculate_dialog_size)
-                fi
-            fi
+    local repos_to_change=""
+    while IFS= read -r repo_info; do
+        repo=$(echo "$repo_info" | cut -d' ' -f1)
+        repos_to_change+="$repo\n"
+    done <<< "$selected_repos"
+
+    dialog --title "Confirm Visibility Changes" --yesno "Are you sure you want to change the visibility of these repositories?\n\n$repos_to_change" $(calculate_dialog_size)
+    if [ $? -ne 0 ]; then
+        dialog --msgbox "Operation cancelled." $(calculate_dialog_size)
+        return
+    fi
+
+    while IFS= read -r repo_info; do
+        repo=$(echo "$repo_info" | cut -d' ' -f1)
+        if toggle_repo_visibility "$repo"; then
+            dialog --msgbox "Successfully toggled visibility for $repo" $(calculate_dialog_size)
+        else
+            dialog --msgbox "Failed to toggle visibility for $repo. Check the log file for details." $(calculate_dialog_size)
         fi
-    done
+    done <<< "$selected_repos"
 }
 
 # Function to process selected repositories for archive status toggling
@@ -350,35 +356,31 @@ process_selected_repos_archive() {
         return
     fi
 
-    IFS=$'\n' read -d '' -r -a repo_array <<< "$all_repos"
-    log "Repo array size: ${#repo_array[@]}"
+    local repos_to_change=""
+    while IFS= read -r repo_info; do
+        repo=$(echo "$repo_info" | cut -d' ' -f1)
+        repos_to_change+="$repo\n"
+    done <<< "$selected_repos"
 
-    for selection in $selected_repos; do
-        log "Processing selection: $selection"
-        if [[ $selection =~ ^[0-9]+$ ]] && [ "$selection" -le "${#repo_array[@]}" ]; then
-            repo_info="${repo_array[$((selection-1))]}"
-            IFS='|' read -r repo visibility archived <<< "$repo_info"
-            log "Selected repo: $repo, visibility: $visibility, archived: $archived"
-            
-            dialog --title "Confirm Archive Status Change" --yesno "Are you sure you want to change the archive status of $repo?" $(calculate_dialog_size)
-            if [ $? -eq 0 ]; then
-                log "Attempting to change archive status of $repo"
-                if toggle_repo_archive_status "$repo"; then
-                    log "Successfully changed archive status for $repo"
-                    dialog --msgbox "Successfully changed archive status for $repo" $(calculate_dialog_size)
-                    refresh_needed=true
-                else
-                    log "Failed to change archive status for $repo"
-                    dialog --msgbox "Failed to change archive status for $repo. Check the log file for details." $(calculate_dialog_size)
-                fi
-            else
-                log "Archive status change cancelled for $repo"
-                dialog --msgbox "Archive status change cancelled for $repo" $(calculate_dialog_size)
-            fi
+    dialog --title "Confirm Archive Status Changes" --yesno "Are you sure you want to change the archive status of these repositories?\n\n$repos_to_change" $(calculate_dialog_size)
+    if [ $? -ne 0 ]; then
+        log "Operation cancelled by user"
+        dialog --msgbox "Operation cancelled." $(calculate_dialog_size)
+        return
+    fi
+
+    while IFS= read -r repo_info; do
+        repo=$(echo "$repo_info" | cut -d' ' -f1)
+        log "Processing repo: $repo"
+        if toggle_repo_archive_status "$repo"; then
+            log "Successfully changed archive status for $repo"
+            dialog --msgbox "Successfully changed archive status for $repo" $(calculate_dialog_size)
+            refresh_needed=true
         else
-            log "Invalid selection: $selection"
+            log "Failed to change archive status for $repo"
+            dialog --msgbox "Failed to change archive status for $repo. Check the log file for details." $(calculate_dialog_size)
         fi
-    done
+    done <<< "$selected_repos"
 
     if [ "$refresh_needed" = true ]; then
         log "Refreshing repository cache"
