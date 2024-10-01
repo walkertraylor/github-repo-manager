@@ -177,7 +177,6 @@ toggle_repo_archive_status() {
     log "Starting toggle_repo_archive_status for $repo"
 
     log "Checking current archive status of $repo"
-    # Get current archive status using GitHub CLI
     current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>&1)
     local get_status_result=$?
     log "Get current archive status result: $get_status_result"
@@ -185,11 +184,9 @@ toggle_repo_archive_status() {
 
     if [ $get_status_result -ne 0 ]; then
         log "Failed to get archive status for $repo. Error: $current_status"
-        dialog --title "Error" --msgbox "Failed to get archive status for $repo.\nError: $current_status" 10 60
         return 1
     fi
 
-    # Determine new status (toggle between archived and unarchived)
     if [ "$current_status" = "true" ]; then
         new_status="unarchived"
         archive_action="unarchive"
@@ -199,70 +196,24 @@ toggle_repo_archive_status() {
     fi
     log "New status will be: $new_status (archive_action: $archive_action)"
 
-    # Confirmation dialog
-    dialog --stdout --title "Confirm Archive Status Change" --yesno "Are you sure you want to change $repo to $new_status?" 8 60
-    local dialog_result=$?
-    log "Dialog result: $dialog_result"
-    if [ $dialog_result -ne 0 ]; then
-        log "User cancelled archive status change for $repo"
-        dialog --title "Cancelled" --msgbox "Archive status change cancelled for $repo" 8 60
-        return 2
-    fi
-
-    # Attempt to change archive status using GitHub CLI
     log "Attempting to change archive status of $repo from $current_status to $new_status"
     log "Executing command: gh repo $archive_action \"$repo\" --yes"
-    output=$(timeout 30s gh repo $archive_action "$repo" --yes 2>&1)
+    output=$(gh repo $archive_action "$repo" --yes 2>&1)
     local gh_result=$?
     log "GitHub CLI command result: $gh_result"
     log "GitHub CLI output: $output"
     
     if [ $gh_result -eq 0 ]; then
         log "Successfully changed $repo to $new_status"
-        dialog --title "Success" --msgbox "Changed $repo to $new_status" 8 60
         log "Repository status change successful. Refreshing cache..."
         CACHED_REPOS=""
         get_all_repositories >/dev/null
         log "Cache refreshed"
-        
-        # Verify the change
-        current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>/dev/null)
-        if [ "$current_status" = "true" ] && [ "$new_status" = "archived" ] || [ "$current_status" = "false" ] && [ "$new_status" = "unarchived" ]; then
-            log "Repository status updated successfully"
-            dialog --title "Success" --msgbox "Successfully changed archive status for $repo" 8 60
-        else
-            log "Warning: Repository status change not immediately reflected in GitHub's API"
-            dialog --title "Warning" --msgbox "Repository status change was successful, but the change is not yet reflected in GitHub's API. It may take a few moments to update." 10 70
-        fi
-    elif [ $gh_result -eq 124 ]; then
-        log "Error: GitHub CLI command timed out after 30 seconds"
-        dialog --title "Error" --msgbox "The operation timed out. The repository status may or may not have changed. Please check manually." 10 60
+        return 0
     else
         log "Failed to change $repo to $new_status. Error: $output"
-        
-        # Handle specific error cases
-        if echo "$output" | grep -q "API rate limit exceeded"; then
-            log "Error: GitHub API rate limit exceeded"
-            dialog --title "Error" --msgbox "GitHub API rate limit exceeded. Please try again later." 8 60
-        elif echo "$output" | grep -q "Could not resolve to a Repository"; then
-            log "Error: Repository $repo not found or no permission to modify"
-            dialog --title "Error" --msgbox "Repository $repo not found or you don't have permission to modify it." 8 60
-        elif echo "$output" | grep -q "Resource not accessible by integration"; then
-            log "Error: No permission to archive/unarchive repository $repo"
-            dialog --title "Error" --msgbox "You don't have permission to archive/unarchive this repository." 8 60
-        else
-            log "Unhandled error occurred: $output"
-            dialog --title "Error" --msgbox "Failed to change $repo archive status.\nError: $output" 10 60
-        fi
+        return 1
     fi
-    
-    # Return a status message instead of showing a final dialog
-    if [ $gh_result -eq 0 ]; then
-        echo "Archive status change for $repo completed successfully."
-    else
-        echo "Archive status change for $repo failed or was cancelled."
-    fi
-    return $gh_result
 }
 
 # Function to validate repository name
@@ -391,11 +342,17 @@ process_selected_repos_archive() {
         if [[ $selection =~ ^[0-9]+$ ]] && [ "$selection" -le "${#repo_array[@]}" ]; then
             repo_info="${repo_array[$((selection-1))]}"
             IFS='|' read -r repo visibility archived <<< "$repo_info"
-            toggle_result=$(toggle_repo_archive_status "$repo")
-            toggle_exit_code=$?
-            dialog --msgbox "$toggle_result" 8 60
-            if [ $toggle_exit_code -eq 0 ]; then
-                refresh_needed=true
+            
+            dialog --stdout --title "Confirm Archive Status Change" --yesno "Are you sure you want to change the archive status of $repo?" 8 60
+            if [ $? -eq 0 ]; then
+                if toggle_repo_archive_status "$repo"; then
+                    dialog --msgbox "Successfully changed archive status for $repo" 8 60
+                    refresh_needed=true
+                else
+                    dialog --msgbox "Failed to change archive status for $repo. Check the log file for details." 10 70
+                fi
+            else
+                dialog --msgbox "Archive status change cancelled for $repo" 8 60
             fi
         fi
     done
