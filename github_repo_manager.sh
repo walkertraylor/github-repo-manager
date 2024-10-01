@@ -256,6 +256,10 @@ toggle_repo_archive_status() {
             dialog --title "Error" --msgbox "Failed to change $repo archive status.\nError: $output" 10 60
         fi
     fi
+    
+    # Wait for user acknowledgment before returning
+    dialog --title "Operation Complete" --msgbox "Press OK to continue" 5 20
+    
     return $gh_result
 }
 
