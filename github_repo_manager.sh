@@ -200,7 +200,6 @@ toggle_repo_archive_status() {
     log "New status will be: $new_status (archive_action: $archive_action)"
 
     # Confirmation dialog
-    log "Preparing to show confirmation dialog"
     dialog --stdout --title "Confirm Archive Status Change" --yesno "Are you sure you want to change $repo to $new_status?" 8 60
     local dialog_result=$?
     log "Dialog result: $dialog_result"
@@ -257,8 +256,8 @@ toggle_repo_archive_status() {
         fi
     fi
     
-    # Wait for user acknowledgment before returning
-    dialog --title "Operation Complete" --msgbox "Press OK to continue" 5 20
+    # Final dialog to ensure user sees the result
+    dialog --title "Operation Result" --msgbox "Archive status change for $repo completed.\nPress OK to continue." 8 60
     
     return $gh_result
 }
