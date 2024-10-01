@@ -223,32 +223,20 @@ toggle_repo_archive_status() {
     if [ $gh_result -eq 0 ]; then
         log "Successfully changed $repo to $new_status"
         dialog --title "Success" --msgbox "Changed $repo to $new_status" 8 60
-        log "Waiting for GitHub to update repository status..."
-        
-        local max_attempts=10
-        local attempt=1
-        local current_status
-        
-        while [ $attempt -le $max_attempts ]; do
-            current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>/dev/null)
-            if [ "$current_status" = "$is_archived" ]; then
-                log "Repository status updated successfully"
-                break
-            fi
-            log "Attempt $attempt: Repository status not yet updated. Waiting..."
-            sleep 2
-            ((attempt++))
-        done
-        
-        if [ $attempt -gt $max_attempts ]; then
-            log "Warning: Repository status did not update within expected time"
-            dialog --title "Warning" --msgbox "Repository status change was successful, but the change is not yet reflected in GitHub's API. Please check manually after a few minutes." 10 70
-        fi
-        
-        log "Refreshing repository cache..."
+        log "Repository status change successful. Refreshing cache..."
         CACHED_REPOS=""
         get_all_repositories >/dev/null
         log "Cache refreshed"
+        
+        # Verify the change
+        current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>/dev/null)
+        if [ "$current_status" = "$is_archived" ]; then
+            log "Repository status updated successfully"
+            dialog --title "Success" --msgbox "Successfully changed archive status for $repo" 8 60
+        else
+            log "Warning: Repository status change not immediately reflected in GitHub's API"
+            dialog --title "Warning" --msgbox "Repository status change was successful, but the change is not yet reflected in GitHub's API. It may take a few moments to update." 10 70
+        fi
         return 0
     elif [ $gh_result -eq 124 ]; then
         log "Error: GitHub CLI command timed out after 30 seconds"
