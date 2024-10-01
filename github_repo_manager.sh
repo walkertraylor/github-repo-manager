@@ -302,10 +302,17 @@ process_selected_repos() {
             IFS='|' read -r repo visibility archived <<< "$repo_info"
             if [ "$archived" = "true" ]; then
                 dialog $(calculate_dialog_size) --msgbox "Repository $repo is archived and cannot be modified."
-            elif toggle_repo_visibility "$repo"; then
-                dialog --msgbox "Successfully toggled visibility for $repo" $(calculate_dialog_size)
             else
-                dialog --msgbox "Failed to toggle visibility for $repo. Check the log file for details." $(calculate_dialog_size)
+                dialog --title "Confirm Visibility Change" --yesno "Are you sure you want to change the visibility of $repo?" $(calculate_dialog_size)
+                if [ $? -eq 0 ]; then
+                    if toggle_repo_visibility "$repo"; then
+                        dialog --msgbox "Successfully toggled visibility for $repo" $(calculate_dialog_size)
+                    else
+                        dialog --msgbox "Failed to toggle visibility for $repo. Check the log file for details." $(calculate_dialog_size)
+                    fi
+                else
+                    dialog --msgbox "Visibility change cancelled for $repo" $(calculate_dialog_size)
+                fi
             fi
         fi
     done
