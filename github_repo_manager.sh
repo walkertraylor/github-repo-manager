@@ -263,12 +263,12 @@ show_repo_selection_menu() {
     done <<< "$repos"
 
     dialog --clear --title "Select Repositories to Toggle Archive Status" \
-           --backtitle "GitHub Repository Archive Manager" \
+           --backtitle "GitHub Repository Manager" \
            --ok-label "Toggle" \
            --extra-button \
            --extra-label "Back" \
            --no-cancel \
-           --checklist "Choose repositories to change archive status:" 25 80 15 \
+           --checklist "Choose repositories to change archive status:" $(calculate_dialog_size) \
            "${menu_items[@]}" 2>&1 >/dev/tty
     
     local return_value=$?
@@ -334,7 +334,7 @@ process_selected_repos_archive() {
             repo_info="${repo_array[$((selection-1))]}"
             IFS='|' read -r repo visibility archived <<< "$repo_info"
             
-            dialog --stdout --title "Confirm Archive Status Change" --yesno "Are you sure you want to change the archive status of $repo?" 8 60
+            dialog --title "Confirm Archive Status Change" --yesno "Are you sure you want to change the archive status of $repo?" $(calculate_dialog_size)
             if [ $? -eq 0 ]; then
                 if toggle_repo_archive_status "$repo"; then
                     dialog --msgbox "Successfully changed archive status for $repo" 8 60
@@ -605,7 +605,7 @@ Committer Count: $committer_count"
 
     log "Formatted repository details for $repo: $details"
     
-    dialog --title "Repository Details: $repo" --msgbox "$details" $(calculate_dialog_size 22 76)
+    dialog --title "Repository Details: $repo" --msgbox "$details" $(calculate_dialog_size)
 }
 
 # Function to display the main menu
