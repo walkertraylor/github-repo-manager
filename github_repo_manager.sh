@@ -256,9 +256,12 @@ toggle_repo_archive_status() {
         fi
     fi
     
-    # Final dialog to ensure user sees the result
-    dialog --title "Operation Result" --msgbox "Archive status change for $repo completed.\nPress OK to continue." 8 60
-    
+    # Return a status message instead of showing a final dialog
+    if [ $gh_result -eq 0 ]; then
+        echo "Archive status change for $repo completed successfully."
+    else
+        echo "Archive status change for $repo failed or was cancelled."
+    fi
     return $gh_result
 }
 
@@ -389,18 +392,11 @@ process_selected_repos_archive() {
             repo_info="${repo_array[$((selection-1))]}"
             IFS='|' read -r repo visibility archived <<< "$repo_info"
             toggle_result=$(toggle_repo_archive_status "$repo")
-            case $toggle_result in
-                0)
-                    dialog --msgbox "Successfully toggled archive status for $repo" 8 60
-                    refresh_needed=true
-                    ;;
-                1)
-                    dialog --msgbox "Failed to toggle archive status for $repo. Check the log file for details." 10 70
-                    ;;
-                2)
-                    dialog --msgbox "Archive status change cancelled for $repo" 8 60
-                    ;;
-            esac
+            toggle_exit_code=$?
+            dialog --msgbox "$toggle_result" 8 60
+            if [ $toggle_exit_code -eq 0 ]; then
+                refresh_needed=true
+            fi
         fi
     done
 
