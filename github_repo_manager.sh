@@ -172,21 +172,19 @@ toggle_repo_archive_status() {
     local repo="$1"
     local current_status
     local new_status
+    local archive_action
     local output
 
     log "Starting toggle_repo_archive_status for $repo"
 
     log "Checking current archive status of $repo"
-    current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>&1)
-    local get_status_result=$?
-    log "Get current archive status result: $get_status_result"
-    log "Current archive status of $repo: $current_status"
-
-    if [ $get_status_result -ne 0 ]; then
+    if ! current_status=$(gh repo view "$repo" --json isArchived --jq '.isArchived' 2>&1); then
         log "Failed to get archive status for $repo. Error: $current_status"
         return 1
     fi
+    log "Current archive status of $repo: $current_status"
 
+    # Determine new status and action
     if [ "$current_status" = "true" ]; then
         new_status="unarchived"
         archive_action="unarchive"
@@ -198,12 +196,7 @@ toggle_repo_archive_status() {
 
     log "Attempting to change archive status of $repo from $current_status to $new_status"
     log "Executing command: gh repo $archive_action \"$repo\" --yes"
-    output=$(gh repo $archive_action "$repo" --yes 2>&1)
-    local gh_result=$?
-    log "GitHub CLI command result: $gh_result"
-    log "GitHub CLI output: $output"
-    
-    if [ $gh_result -eq 0 ]; then
+    if output=$(gh repo $archive_action "$repo" --yes 2>&1); then
         log "Successfully changed $repo to $new_status"
         log "Repository status change successful. Refreshing cache..."
         CACHED_REPOS=""
@@ -562,13 +555,7 @@ show_repo_details() {
     local commit_info
 
     log "Fetching repository information for $repo"
-    repo_info=$(gh repo view "$repo" --json name,description,url,homepageUrl,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,languages,licenseInfo,stargazerCount,forkCount,issues,pullRequests 2>&1)
-    
-    if [ $? -eq 0 ]; then
-        local default_branch=$(echo "$repo_info" | jq -r '.defaultBranchRef.name // "main"')
-        commit_info=$(gh api "repos/$repo/commits?per_page=1&sha=$default_branch" --jq '[.[0].sha, (. | length)]' 2>&1)
-    fi
-    if [ $? -ne 0 ]; then
+    if ! repo_info=$(gh repo view "$repo" --json name,description,url,homepageUrl,defaultBranchRef,isPrivate,isArchived,createdAt,updatedAt,pushedAt,diskUsage,languages,licenseInfo,stargazerCount,forkCount,issues,pullRequests 2>&1); then
         error_message="Failed to fetch repository information for $repo. Error: $repo_info"
         log "$error_message"
         dialog --title "Error" $(calculate_dialog_size) --msgbox "$error_message"
@@ -585,60 +572,36 @@ show_repo_details() {
     log "Successfully fetched repository information for $repo"
     log "Raw repository info: $repo_info"
 
-    local name=$(echo "$repo_info" | jq -r '.name // "N/A"')
-    local description=$(echo "$repo_info" | jq -r '.description // "N/A"')
-    local url=$(echo "$repo_info" | jq -r '.url // "N/A"')
-    local homepage=$(echo "$repo_info" | jq -r '.homepageUrl // "N/A"')
-    local default_branch=$(echo "$repo_info" | jq -r '.defaultBranchRef.name // "N/A"')
-    local visibility=$(echo "$repo_info" | jq -r 'if .isPrivate then "Private" else "Public" end')
-    local archived=$(echo "$repo_info" | jq -r 'if .isArchived then "Yes" else "No" end')
-    local created_at=$(echo "$repo_info" | jq -r '.createdAt // "N/A"' | cut -d'T' -f1)
-    local updated_at=$(echo "$repo_info" | jq -r '.updatedAt // "N/A"' | cut -d'T' -f1)
-    local pushed_at=$(echo "$repo_info" | jq -r '.pushedAt // "N/A"' | cut -d'T' -f1)
-    local disk_usage=$(echo "$repo_info" | jq -r '.diskUsage // "N/A"')
-    local language=$(echo "$repo_info" | jq -r '(.languages | keys)[0] // "N/A"')
-    local license=$(echo "$repo_info" | jq -r '.licenseInfo.name // "N/A"')
-    local stars=$(echo "$repo_info" | jq -r '.stargazerCount // "N/A"')
-    local forks=$(echo "$repo_info" | jq -r '.forkCount // "N/A"')
-    local issues=$(echo "$repo_info" | jq -r '.issues.totalCount // "N/A"')
-    local prs=$(echo "$repo_info" | jq -r '.pullRequests.totalCount // "N/A"')
-    
-    local commit_count="N/A"
-    local committer_count="N/A"
-    
-    # Fetch commit count using GitHub API
-    commit_count=$(gh api "repos/$repo/commits?per_page=1" --jq '.[] | .commit.tree.sha' 2>/dev/null | xargs -I {} gh api "repos/$repo/commits?sha={}&per_page=1" --jq 'total_count' 2>/dev/null)
-    if [ -z "$commit_count" ] || [ "$commit_count" = "null" ]; then
-        commit_count=$(gh api "repos/$repo/commits?per_page=1" --jq 'length' 2>/dev/null)
-        if [ "$commit_count" = "1" ]; then
-            commit_count=$(gh api "repos/$repo/commits" --paginate --jq 'length' 2>/dev/null | awk '{sum+=$1} END {print sum}')
-        fi
-    fi
-    commit_count=${commit_count:-"N/A"}
+    # Use a single jq command to extract all information
+    local repo_details=$(echo "$repo_info" | jq -r '
+        "Name: \(.name // "N/A")
+        Description: \(.description // "N/A")
+        URL: \(.url // "N/A")
+        Homepage: \(.homepageUrl // "N/A")
+        Default Branch: \(.defaultBranchRef.name // "N/A")
+        Visibility: \(if .isPrivate then "Private" else "Public" end)
+        Archived: \(if .isArchived then "Yes" else "No" end)
+        Created: \(.createdAt[0:10] // "N/A")
+        Last Updated: \(.updatedAt[0:10] // "N/A")
+        Last Pushed: \(.pushedAt[0:10] // "N/A")
+        Disk Usage: \(.diskUsage // "N/A") KB
+        Primary Language: \((.languages | keys)[0] // "N/A")
+        License: \(.licenseInfo.name // "N/A")
+        Stars: \(.stargazerCount // "N/A")
+        Forks: \(.forkCount // "N/A")
+        Open Issues: \(.issues.totalCount // "N/A")
+        Open Pull Requests: \(.pullRequests.totalCount // "N/A")"
+    ')
 
+    # Fetch commit count
+    local commit_count=$(gh api "repos/$repo/commits?per_page=1" --jq 'total_count' 2>/dev/null || echo "N/A")
+    
     # Fetch committer count
-    committer_count=$(gh api "repos/$repo/contributors?per_page=100" --jq 'length' 2>/dev/null || echo "N/A")
+    local committer_count=$(gh api "repos/$repo/contributors?per_page=100" --jq 'length' 2>/dev/null || echo "N/A")
     
     log "Fetched commit count: $commit_count, committer count: $committer_count"
 
-    local details="
-Name: $name
-Description: $description
-URL: $url
-Homepage: $homepage
-Default Branch: $default_branch
-Visibility: $visibility
-Archived: $archived
-Created: $created_at
-Last Updated: $updated_at
-Last Pushed: $pushed_at
-Disk Usage: $disk_usage KB
-Primary Language: $language
-License: $license
-Stars: $stars
-Forks: $forks
-Open Issues: $issues
-Open Pull Requests: $prs
+    local details="${repo_details}
 Commit Count: $commit_count
 Committer Count: $committer_count"
 
